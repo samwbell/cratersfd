@@ -1,5 +1,8 @@
 from setuptools import setup, find_packages
 
+with open("README_pypi.md", "r") as f:
+    long_description = f.read()
+
 setup(
     name="cratersfd",
     version="1.0.0",
@@ -20,5 +23,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    license="MIT",
+    license_files=["LICENSE"],
     python_requires='>=3.12',  # Minimum Python version required
 )
