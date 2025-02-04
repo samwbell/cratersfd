@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="craterdata",
-    version="0.1.0",
-    description="For analyzing crater count data",
+    name="cratersfd",
+    version="1.0.0",
+    description="For analyzing crater size-frequency distributions.",
     author="Sam Bell",
     author_email="swbell11@gmail.com",
-    url="https://github.com/samwbell/cratrcountr",
+    url="https://github.com/samwbell/cratersfd",
     package_dir={"": "src"},
     packages=find_packages(where='src'),
     install_requires=[

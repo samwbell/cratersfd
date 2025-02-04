@@ -1,6 +1,17 @@
 from .pdf_fitting_module import *
 
 
+def C_XP(X, P):
+    non_inf = (X > -1 * np.inf) & (X < 1 * np.inf)
+    C = P.copy()
+    C[non_inf] = cumulative_trapezoid(
+        P[non_inf], X[non_inf], initial=0
+    )
+    C[non_inf] = C[non_inf] / C[non_inf].max()
+    C[X == -1 * np.inf] = 0
+    C[X == np.inf] = 1
+    return C
+
 
 class CoreRandomVariable:
     
@@ -49,15 +60,7 @@ class CoreRandomVariable:
             )
 
     def C(self):
-        non_inf = (self.X > -1 * np.inf) & (self.X < 1 * np.inf)
-        C = self.P.copy()
-        C[non_inf] = cumulative_trapezoid(
-            self.P[non_inf], self.X[non_inf], initial=0
-        )
-        C[non_inf] = C[non_inf] / C[non_inf].max()
-        C[self.X == -1 * np.inf] = 0
-        C[self.X == np.inf] = 1
-        return C
+        return C_XP(self.X, self.P)
 
     def percentile(self, p):
         v = np.interp(p, self.C(), self.X)
@@ -304,7 +307,7 @@ class BaseRandomVariable(CoreRandomVariable):
 
 
     
-def apply2rv(rv, f, kind=None, even_out=True):
+def apply2rv(rv, f, kind=None, even_out=True, precision=1.0):
     X = rv.X
     PX = rv.P
     C = rv.C()
@@ -320,8 +323,14 @@ def apply2rv(rv, f, kind=None, even_out=True):
     else:
         _kind = kind
     if even_out:
+        Yd, PYd = Y[::3], PY[::3]
+        CY = C_XP(Yd, PYd)
+        Ymin = np.interp(1E-6, CY, Yd)
+        Ymax = np.interp(1 - 1 / X.shape[0], CY, Yd)
+        inc = np.gradient(CY, Yd).max() * 10000 / Y.shape[0] / precision
+        Ylen = max(round(Ymax / inc), Y.shape[0])
         Y_even_spacing = np.linspace(
-            Y.min(), Y.max(), Y.shape[0], endpoint=True
+            Ymin, Ymax, Ylen, endpoint=True
         )
         PY_even_spacing = np.interp(Y_even_spacing, Y, PY)
         return rv.__class__(Y_even_spacing, PY_even_spacing, kind=_kind)
@@ -365,12 +374,17 @@ class MathRandomVariable(BaseRandomVariable):
             f2 = other.function()
             X1 = self.X
             X2 = other.X
-            Y = np.linspace(
-                X1.min() * X2.min(), 
-                X1.max() * X2.max(), 
-                max(X1.shape[0], X2.shape[0]), 
-                endpoint=True
-            )[:, np.newaxis]
+            X1inc = (X1[-1] - X1[0]) / X1.shape[0]
+            X2inc = (X2[-1] - X2[0]) / X2.shape[0]
+            X1min, X1max = tuple(self.percentile(np.array([0.0001, 0.9999])))
+            X2min, X2max = tuple(other.percentile(np.array([0.0001, 0.9999])))
+            Xmin = X1min * X2min
+            Xmax = X1max * X2max
+            X1mean, X2mean = self.mean(), other.mean()
+            Xlen = round((Xmax - Xmin) / max(X1inc, X2inc) / min(X1mean, X2mean))
+            Xlen = max(Xlen, X1.shape[0], X2.shape[0])
+            print(Xlen)
+            Y = np.linspace(Xmin, Xmax, Xlen, endpoint=True)[:, np.newaxis]
             # Because Y has even spacing, we can use np.sum
             Py = (f1(X1) * f2(Y / X1) / np.abs(X1)).sum(axis=1)
             return self.__class__(Y.T[0], Py, kind=self.kind)
@@ -439,11 +453,7 @@ class MathRandomVariable(BaseRandomVariable):
                 kind=self.kind
             )
         else:
-            return self.__class__(
-                other / self.X, self.P, val=other / self.val,
-                low=other / self.low, high=other / self.high, 
-                kind=self.kind
-            )
+            return self.apply(lambda x : 1 / x)
     
     def __rpow__(self, other):
         if isinstance(other, MathRandomVariable):
@@ -466,7 +476,7 @@ class MathRandomVariable(BaseRandomVariable):
             )
 
     def apply(self, f, kind=None, even_out=True):
-        return apply2rv(self, f, kind=kind)
+        return apply2rv(self, f, kind=kind, even_out=even_out)
 
     def ten2the(self, kind=None):
         return self.apply(lambda x: 10**x, kind=kind)

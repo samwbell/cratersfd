@@ -214,7 +214,7 @@ _val_PPFit_log_linear = read_PPFit('val_PPFit_log_linear')
 _lower_PPFit_log_linear = read_PPFit('lower_PPFit_log_linear')
 _upper_PPFit_log_linear = read_PPFit('upper_PPFit_log_linear')
 
-with ior.path('craterdata.files', 'N_0_dict.csv') as f:
+with ior.path('cratersfd.files', 'N_0_dict.csv') as f:
     N_0_dict_df = pd.read_csv(f, index_col=0)
 N_0_dict = {
     col: tuple(N_0_dict_df[col]) for col in N_0_dict_df

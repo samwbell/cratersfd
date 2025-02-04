@@ -11,12 +11,12 @@ To see some of the functionality, start with three example notebooks:
 
 ## Installation
 1) Clone the repo:
-`git clone https://github.com/samwbell/craterdata`
+`git clone https://github.com/samwbell/cratersfd`
 
 2) Navigate to its directory:
-`cd craterdata`
+`cd cratersfd`
 
-3) If you are using a virtual environment, enter it.  Installing craterdata will update to the minimum versions of numpy, scipy, and pandas.  Otherwise, it should not affect the underlying packages.
+3) If you are using a virtual environment, enter it.  Installing cratersfd will update to the minimum versions of numpy, scipy, and pandas.  Otherwise, it should not affect the underlying packages.
 
 4) Install:
 `pip install -e .`
@@ -26,7 +26,7 @@ To see some of the functionality, start with three example notebooks:
 6) If you want the large files for the calculations in the calc folder, download the contents of calc/figs and calc/saved from [the draft Zenodo record](https://zenodo.org/records/13917307?preview=1&token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImViNWVmYjM0LTdkZTctNDczMC1iYjY2LTlhNjYzODcxYzhkYiIsImRhdGEiOnt9LCJyYW5kb20iOiJhMWQ2YjgwNjMxM2RlOTMwOWEyZjA5ZjJlMzkzZDYwYyJ9.vr01Yxztc8haK-hcSkeJ1pzCK8ujAzZX3A_i8x2oU-mFYDygjUpsVbMWML4aepRRCxufn2sOnvf5QtxcVxUHQQ).
 
 ## Dependencies
-The craterdata package primarily uses the standard numpy and scipy packages.  In a few cases, it uses pandas, mostly for reading and saving CSV files.  The one nonstandard package it uses is the ash package by Alexander Dittman (github.com/ajdittmann/ash), which implements the Average Shifted Histogram (ASH) method in Python.  
+The cratersfd package primarily uses the standard numpy and scipy packages.  In a few cases, it uses pandas, mostly for reading and saving CSV files.  The one nonstandard package it uses is the ash package by Alexander Dittman (github.com/ajdittmann/ash), which implements the Average Shifted Histogram (ASH) method in Python.  
 
 This method is used to produce smoothed histograms of observations that best approximate the underlying PDF as long as the distribution is roughly Gaussian.  We use it for handling synthetic modeling results.  While we are loath to rely on nonstandard packages, ASH dramatically reduces the N required to see the same quality of empirical PDF with synthetic modeling--often by more than an order of magnitude.
 
