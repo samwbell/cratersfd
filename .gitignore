@@ -25,3 +25,6 @@ calc/figs.zip
 calc/saved_lite/
 calc/saved.zip
 calc/saved_lite.zip
+src/craterdata/README_pypi.md
+src/craterdata/LICENSE
+src/craterdata/setup.py
