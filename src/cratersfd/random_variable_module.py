@@ -169,10 +169,11 @@ class RandomVariable(MathRandomVariable):
         fixed_start_x=None, fixed_start_p=None, label=False, 
         rounding_n=2, label_shift_x=0, label_shift_y=0, unit=None, 
         label_text_size=10, force_label_side=None, xlim=None, 
-        error_bar_type='same', label_color='same', alpha=0.07,
+        error_bar_type='same', label_color='same', alpha=0.3,
         pdf_label=None, standardize=True, force_erase_box=None,
         pdf_label_size=None, pdf_gap_shift=0, dn=None,
-        label_x=None, label_y=None, lw=2, mf=None
+        label_x=None, label_y=None, lw=2, mf=None, 
+        plot_error_bars=True, edge_lines=False
     ):
             
         axis_exists = any(plt.gcf().get_axes())
@@ -201,7 +202,7 @@ class RandomVariable(MathRandomVariable):
         if xlim is not None:
             plt.xlim(xlim)
         xlim = ax.get_xlim()
-        
+
         if error_bar_type.lower() not in {'same', self.kind.lower()}:
             krv = self.as_kind(error_bar_type)
             low, val, high = krv.low, krv.val, krv.high
@@ -209,29 +210,30 @@ class RandomVariable(MathRandomVariable):
         else:
             low, val, high = self.low, self.val, self.high
             kind = self.kind
-        if np.isnan(low):
-            ilow = np.min(X)
-        else:
-            ilow = low
-        if np.isnan(high):
-            ihigh = np.max(X)
-        else:
-            ihigh = high
-        interp_n = np.max([np.sum((X > ilow) & (X < ihigh)), 13000])
-        X_interp = np.linspace(ilow, ihigh, interp_n)
-        P_interp = np.interp(X_interp, X, P)
         
-        plt.fill_between(
-            X_interp, upshift, P_interp, facecolor=color, alpha=alpha
-        )
-        
-        low_P = np.interp(low, X_interp, P_interp)
-        high_P = np.interp(high, X_interp, P_interp)
-        val_P = np.interp(val, X_interp, P_interp)
-
-        plt.plot([low, low], [upshift, low_P], ':', color=color)
-        plt.plot([high, high], [upshift, high_P], ':', color=color)
-        plt.plot([val, val], [upshift, val_P], color=color)
+        if plot_error_bars:
+            if np.isnan(low):
+                ilow = np.min(X)
+            else:
+                ilow = low
+            if np.isnan(high):
+                ihigh = np.max(X)
+            else:
+                ihigh = high
+            interp_n = np.max([np.sum((X > ilow) & (X < ihigh)), 13000])
+            X_interp = np.linspace(ilow, ihigh, interp_n)
+            P_interp = np.interp(X_interp, X, P)
+            plt.fill_between(
+                X_interp, upshift, P_interp, 
+                facecolor=color, alpha=alpha
+            )
+            low_P = np.interp(low, X_interp, P_interp)
+            high_P = np.interp(high, X_interp, P_interp)
+            val_P = np.interp(val, X_interp, P_interp)
+            plt.plot([val, val], [upshift, val_P], color=color)
+            if edge_lines:
+                plt.plot([low, low], [upshift, low_P], ':', color=color)
+                plt.plot([high, high], [upshift, high_P], ':', color=color)
 
         if mf is None:
             if kind.lower() in {'log', 'auto log'}:
@@ -264,7 +266,10 @@ def true_error_pdf_single(
         return_rv = true_error_dict[tuple([
             N, n_points, cum_prob_edge, kind
         ])]
-        
+
+    elif isinstance(N, MathRandomVariable):
+        return False
+    
     else:
     
         X, P = true_error_pdf_XP(
@@ -318,6 +323,8 @@ def true_error_pdf(N_raw, n_points=10000, cum_prob_edge=1E-7, kind='log'):
             N_raw, n_points=n_points, cum_prob_edge=cum_prob_edge,
             kind=kind
         )
+
+lambda_pdf = true_error_pdf
 
 
 def sqrt_N_error_pdf(N):

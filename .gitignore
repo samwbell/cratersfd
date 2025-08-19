@@ -25,6 +25,5 @@ calc/figs.zip
 calc/saved_lite/
 calc/saved.zip
 calc/saved_lite.zip
-src/cratersfd/README_pypi.md
-src/cratersfd/LICENSE
-src/cratersfd/setup.py
+README_pypi.md
+pyproject.toml

@@ -1,4 +1,4 @@
-# craterdata
+# cratersfd
 A Python3 package for statistical analysis of crater count data.
 
 To see some of the functionality, start with three example notebooks:

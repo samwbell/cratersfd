@@ -73,10 +73,11 @@ def get_cu_lines(
 
 
 def plot_cumulative_unbinned(
-    ds, area, color='black', alpha=1.0, plot_lines=True, ms=4,
+    ds, area, color='mediumslateblue', alpha=1.0, plot_lines=True, ms=4,
     plot_points=False, plot_point_error_bars=False, point_color='same',
-    center=False, d_min=None, d_max=10000, kind='log', fill_alpha=0.07,
-    do_formatting=True, elinewidth=0.5, point_label=None
+    center=False, d_min=None, d_max=10000, kind='log', fill_alpha=0.15,
+    do_formatting=True, elinewidth=0.5, point_label=None,
+    plot_bounds=False
 ):
     
     axis_exists = any(plt.gcf().get_axes())
@@ -100,6 +101,8 @@ def plot_cumulative_unbinned(
     )
     if plot_lines:
         ys = [full_density, full_low, full_high]
+        if not plot_bounds:
+            ys = ys[:1]
         line_styles = ['', ':', ':']
         for y, ls in zip(ys, line_styles):
             plt.hlines(
@@ -134,5 +137,6 @@ def plot_cumulative_unbinned(
             sorted_ds, full_density, full_low, full_high, full_ds=full_ds,
             ylabel_type='Cumulative ', error_bar_type=kind
         )
-        
+
+plot_cumulative = plot_cumulative_unbinned
 

@@ -14,7 +14,7 @@ def pareto_pdf(d, dmin=1, alpha_min=1E-5, alpha_max=10,
         _alpha = np.linspace(alpha_min, alpha_max, n_points)
     else:
         _alpha = alpha
-    P = pareto_P(d, _alpha, dmin=dmin)
+    P = pareto_P(d[d > dmin], _alpha, dmin=dmin)
     return RandomVariable(_alpha, P, kind='mean')
 
 def truncated_pareto_P(d, alpha, dmin=1, dmax=1E4):
@@ -112,13 +112,30 @@ def slope_pdf(
         _alpha = np.linspace(alpha_min, alpha_max, n_points)
     else:
         _alpha = alpha
-    rr_rv = rise_over_run_pdf(ds, dmin=dmin, dmax=dmax)
-    tp_rv = truncated_pareto_pdf(
-        ds, dmin=dmin, dmax=dmax, alpha_max=alpha_max, 
-        n_points=n_points, alpha=alpha
-    )
-    return rr_rv.update(tp_rv)
+    if dmax is None:
+        rv = pareto_pdf(
+            ds, dmin=dmin, n_points=n_points,
+            alpha=alpha, alpha_min=alpha_min, alpha_max=alpha_max
+        )
+    elif ds[ds >= dmax].shape[0] == 0:
+        rv = truncated_pareto_pdf(
+            ds, dmax=dmax, dmin=dmin, n_points=n_points, 
+            alpha=alpha, alpha_min=alpha_min, alpha_max=alpha_max
+        )
+    else:
+        rr_rv = rise_over_run_pdf(ds, dmin=dmin, dmax=dmax)
+        tp_rv = truncated_pareto_pdf(
+            ds, dmax=dmax, dmin=dmin, n_points=n_points, 
+            alpha=alpha, alpha_min=alpha_min, alpha_max=alpha_max
+        )
+        rv = rr_rv.update(tp_rv)
+    return rv
 
+def tp_eq(d, dmin=1.0, dmax=1E4, alpha=2):
+    num = alpha / d * (dmin / d)**alpha
+    denom = 1 - (dmin / dmax)**alpha
+    return num / denom
 
+    truncated_pareto_equation = tp_eq
 
 

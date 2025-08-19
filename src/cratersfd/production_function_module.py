@@ -13,6 +13,41 @@ def loglog_linear_pf(N1=0.001, slope=-2):
     return out_f
 
 
+def linear2loglog_pf(pf):
+    def loglog_pf(logD):
+        return np.log10(pf(10**logD))
+    return loglog_pf
+
+
+def loglog2linear_pf(pf):
+    def linear_pf(d):
+        return 10**pf(np.log10(d))
+    return linear_pf
+
+
+def cumulative2differential_pf(
+    c_pf, dmin=0.005, dmax=1E4, n_points=10000
+):
+    D = np.logspace(np.log10(dmin), np.log10(dmax), n_points)
+    differential_array = -1 * np.gradient(c_pf(D), D)
+    def d_pf(d):
+        return np.interp(d, D, differential_array)
+    return d_pf
+
+
+def differential2cumulative_pf(
+    d_pf, dmin=0.005, dmax=1E4, n_points=10000
+):
+    D = np.logspace(np.log10(dmin), np.log10(dmax), n_points)
+    fD = np.flip(D)
+    cumulative_array = -1 * np.flip(
+        cumulative_trapezoid(d_pf(fD), fD, initial=0)
+    )
+    def c_pf(d):
+        return np.interp(d, D, cumulative_array)
+    return c_pf
+    
+    
 def polynomial_pf(D, coefficients):
     logD = np.log10(D)
     a_n = np.array(coefficients)
@@ -60,6 +95,17 @@ def npf_new_R(D):
 
 def npf_new_loglog(logD):
     return np.log10(npf_new(10**logD))
+
+
+_logD = np.linspace(np.log10(0.005), np.log10(2500), 20000)
+_logRho = npf_new_loglog(_logD)
+_npf_slope_array = np.gradient(_logRho, _logD)
+def npf_slope(d):
+    return np.interp(np.log10(d), _logD, _npf_slope_array)
+_logDifRho = np.log10(npf_new_dif(10**_logD))
+_npf_alpha_array = np.gradient(_logDifRho, _logD)
+def npf_alpha(d):
+    return -1 * np.interp(np.log10(d), _logD, _npf_alpha_array) - 1
 
 
 def npf_error(_D):
@@ -112,6 +158,9 @@ def hartmann84_sat_D(age, Ds, pf=npf_new_loglog):
 # The Neukum Chronology Function.
 def ncf(t):
     return 5.44E-14 *(np.exp(6.93 * t) - 1) + 8.38E-4 * t
+
+def dncf_dt(t):
+    return 5.44E-14 * 6.93 * np.exp(6.93 * t) + 8.38E-4
 
 # This is an object used in the calculation of ncf_inv.
 class ncf_model():

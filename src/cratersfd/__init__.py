@@ -1,2 +1,2 @@
-from .target_properties_module import *
+from .lunar_area_module import *
 

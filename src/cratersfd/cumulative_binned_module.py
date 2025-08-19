@@ -9,16 +9,11 @@ def fast_calc_cumulative_binned(
 ):
 
     if d_min is not None:
-        _reference_point = d_min
-        _start_at_reference_point = True
-    else:
-        _reference_point = reference_point
-        _start_at_reference_point = start_at_reference_point
+        reference_point = d_min
+        start_at_reference_point = True
     
     bin_counts, bin_array, bin_min, bin_max = bin_craters(
-        ds, bin_width_exponent=bin_width_exponent, d_max=d_max, 
-        reference_point=_reference_point, 
-        start_at_reference_point=_start_at_reference_point
+        **match_args(locals(), bin_craters)
     )
     
     cumulative_count_array = np.flip(np.flip(bin_counts).cumsum())
@@ -41,21 +36,17 @@ def fast_calc_cumulative_binned(
 
 def calc_cumulative_binned_pdfs(
     ds, area, bin_width_exponent=neukum_bwe, x_axis_position='left',
-    skip_zero_crater_bins=False, reference_point=1.0, 
+    skip_zero_crater_bins=False, reference_point=1.0, kind='log',
     start_at_reference_point=False, d_max=1E4, d_min=None
 ):
     x_array, density_array = fast_calc_cumulative_binned(
-        ds=ds, area=area, bin_width_exponent=bin_width_exponent, 
-        x_axis_position=x_axis_position, d_max=d_max,
-        skip_zero_crater_bins=skip_zero_crater_bins, 
-        reference_point=reference_point, d_min=d_min,
-        start_at_reference_point=start_at_reference_point
+        **match_args(locals(), fast_calc_cumulative_binned)
     )
     cumulative_counts = density_array * area
     density_pdf_list = []
     for cumulative_count in cumulative_counts:
-        lambda_pdf = true_error_pdf(cumulative_count)
-        density_pdf_list.append(lambda_pdf / area)
+        lambda_rv = lambda_pdf(cumulative_count, kind=kind)
+        density_pdf_list.append(lambda_rv / area)
     return x_array, density_pdf_list
 
 
@@ -64,22 +55,17 @@ def plot_cumulative_binned(
     skip_zero_crater_bins=False, reference_point=1.0, d_max=1000,
     start_at_reference_point=False, color='black', 
     alpha=1.0, plot_points=True, plot_error_bars=True,
-    do_formatting=True, d_min=None
+    do_formatting=True, d_min=None, kind='log'
 ):
     bin_ds, pdf_list = calc_cumulative_binned_pdfs(
-        ds, area, bin_width_exponent=bin_width_exponent,
-        x_axis_position=x_axis_position, d_max=d_max,
-        skip_zero_crater_bins=skip_zero_crater_bins,
-        reference_point=reference_point, d_min=d_min,
-        start_at_reference_point=start_at_reference_point
+        **match_args(locals(), calc_cumulative_binned_pdfs)
     )
     modes = np.array([pdf.mode() for pdf in pdf_list])
     bin_ds = bin_ds[modes > 1E-100]
     pdf_list = [pdf for pdf in pdf_list if pdf.mode() > 1E-100]
     plot_pdf_list(
-        bin_ds, pdf_list, color=color, alpha=alpha, 
-        plot_error_bars=plot_error_bars, plot_points=plot_points,
-        do_formatting=do_formatting
+        bin_ds, pdf_list, 
+        **match_kwargs(locals(), plot_pdf_list)
     )
 
 

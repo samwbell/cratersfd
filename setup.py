@@ -1,8 +1,5 @@
 from setuptools import setup, find_packages
 
-with open("README_pypi.md", "r") as f:
-    long_description = f.read()
-
 setup(
     name="cratersfd",
     version="1.0.0",

@@ -13,6 +13,11 @@ def C_XP(X, P):
     return C
 
 
+def downsample(self, n_points):
+    X = np.linspace(self.X.min(), self.X.max(), n_points)
+    return self.match_X(X)
+
+
 class CoreRandomVariable:
     
     def __init__(self, X, P, val=None, low=None, high=None):
@@ -106,18 +111,29 @@ class CoreRandomVariable:
             **self.new_kwargs()
         )
 
-    def match_X(self, X):
-        return self.__class__(
-            X, np.interp(X, self.X, self.P),
-            val=self.val, low=self.low, high=self.high, 
-            **self.new_kwargs()
-        )
+    def match_X(self, X, recalculate=False):
+        if recalculate:
+            return self.__class__(
+                X, np.interp(X, self.X, self.P),
+                val=None, low=None, high=None, 
+                **self.new_kwargs()
+            )
+        else:
+            return self.__class__(
+                X, np.interp(X, self.X, self.P),
+                val=self.val, low=self.low, high=self.high, 
+                **self.new_kwargs()
+            )
+
+    def downsample(self, n_points):
+        X = np.linspace(self.X.min(), self.X.max(), n_points)
+        return self.match_X(X)
 
     def cut_below(self, c, recalculate=False):
         if recalculate:
             return self.__class__(
                 self.X[self.X > c], self.P[self.X > c],
-                val=None, low=None, high=None, **new_kwargs()
+                val=None, low=None, high=None, **self.new_kwargs()
             )
         else:
             return self.__class__(
@@ -130,11 +146,26 @@ class CoreRandomVariable:
         if recalculate:
             return self.__class__(
                 self.X[self.X < c], self.P[self.X < c],
-                val=None, low=None, high=None, **new_kwargs()
+                val=None, low=None, high=None, **self.new_kwargs()
             )
         else:
             return self.__class__(
                 self.X[self.X < c], self.P[self.X < c],
+                val=self.val, low=self.low, high=self.high, 
+                **self.new_kwargs()
+            )
+
+    def slice(self, Xmin, Xmax, recalculate=True):
+        if recalculate:
+            return self.__class__(
+                self.X[(self.X >= Xmin) & (self.X <= Xmax)], 
+                self.P[(self.X >= Xmin) & (self.X <= Xmax)],
+                val=None, low=None, high=None, **self.new_kwargs()
+            )
+        else:
+            return self.__class__(
+                self.X[(self.X >= Xmin) & (self.X <= Xmax)], 
+                self.P[(self.X >= Xmin) & (self.X <= Xmax)],
                 val=self.val, low=self.low, high=self.high, 
                 **self.new_kwargs()
             )
@@ -174,7 +205,7 @@ class CoreRandomVariable:
 class BaseRandomVariable(CoreRandomVariable):
 
     def __init__(
-        self, X, P, val=None, low=None, high=None, kind='log'
+        self, X, P, val=None, low=None, high=None, kind='median'
     ):
         super().__init__(X, P, val=val, low=low, high=high)
         self.kind=kind
@@ -296,7 +327,7 @@ class BaseRandomVariable(CoreRandomVariable):
     def std(self):
         return rv_std_XP(self.X, self.P)
 
-    def skewnewss(self):
+    def skewness(self):
         return rv_skewness_XP(self.X, self.P)
 
     def max(self):
@@ -305,23 +336,48 @@ class BaseRandomVariable(CoreRandomVariable):
     def mode(self):
         return self.X[np.argmax(self.P)]
 
+    def median(self):
+        return self.percentile(0.5)
+
 
     
-def apply2rv(rv, f, kind=None, even_out=True, precision=1.0):
+def apply2rv(
+    rv, f, kind=None, even_out=True, precision=1.0, 
+    n_hide_near_roots=0
+):
     X = rv.X
     PX = rv.P
-    C = rv.C()
     Y = f(X)
-    v = np.isfinite(Y) & ~np.isnan(Y)
-    X, Y, C = X[v], Y[v], C[v]
-    PY = np.gradient(C, Y)
-    if Y[0] > Y[-1]:
-        PY = -1 * PY
-        Y, PY = np.flip(Y), np.flip(PY)
-    if kind is None:
-        _kind = rv.kind
+    is_valid = np.isfinite(Y) & ~np.isnan(Y)
+    X, Y = X[is_valid], Y[is_valid]
+    roots = np.where(np.diff(np.sign(np.diff(Y))) != 0)[0] + 1
+    if roots.shape[0] > 0:
+        PY = PX * np.abs(np.gradient(X, Y))
+        n = n_hide_near_roots
+        deletes = np.unique([
+            np.arange(root - n, root + n + 1)
+            for root in roots
+        ])
+        Y = np.delete(Y, deletes)
+        PY = np.delete(PY, deletes)
+        Ys, PYs = np.split(Y, roots), np.split(PY, roots)
+        Y0 = np.sort(Y)
+        PY0 = 0.0 * Y0
+        for Yi, PYi in zip(Ys, PYs):
+            if Yi[0] > Yi[-1]:
+                Yi, PYi = np.flip(Yi), np.flip(PYi)
+            in_range = (Y0 >= Yi.min()) & (Y0 <= Yi.max())
+            Y0i = Y0[in_range]
+            PY0[in_range] += np.interp(Y0i, Yi, PYi)
+        Y, PY = Y0, PY0
     else:
-        _kind = kind
+        C = rv.C()[is_valid]
+        PY = np.gradient(C, Y)
+        if Y[0] > Y[-1]:
+            PY = -1 * PY
+            Y, PY = np.flip(Y), np.flip(PY)
+    if kind is None:
+        kind = rv.kind
     if even_out:
         Yd, PYd = Y[::3], PY[::3]
         CY = C_XP(Yd, PYd)
@@ -333,9 +389,35 @@ def apply2rv(rv, f, kind=None, even_out=True, precision=1.0):
             Ymin, Ymax, Ylen, endpoint=True
         )
         PY_even_spacing = np.interp(Y_even_spacing, Y, PY)
-        return rv.__class__(Y_even_spacing, PY_even_spacing, kind=_kind)
+        return rv.__class__(Y_even_spacing, PY_even_spacing, kind=kind)
     else:
-        return rv.__class__(Y, PY, kind=_kind)
+        return rv.__class__(Y, PY, kind=kind)
+
+
+
+def log__mul__(self, other):
+    log_self = self[self.X > 0].as_kind('mean').apply(
+        np.log10, even_out=False
+    ).pad_with_0s()
+    log_other = other[other.X > 0].as_kind('mean').apply(
+        np.log10, even_out=False
+    ).pad_with_0s()
+    return (log_self + log_other).apply(
+        lambda x: 10**x, even_out=False
+    ).as_kind(self.kind)
+
+
+
+def log__truediv__(self, other):
+    log_self = self[self.X > 0].as_kind('mean').apply(
+        np.log10, even_out=False
+    ).pad_with_0s()
+    log_other = other[other.X > 0].as_kind('mean').apply(
+        np.log10, even_out=False
+    ).pad_with_0s()
+    return (log_self - log_other).apply(
+        lambda x: 10**x, even_out=False
+    ).as_kind(self.kind)
 
 
 
@@ -349,7 +431,7 @@ class MathRandomVariable(BaseRandomVariable):
             X_new = np.linspace(X_new_min, X_new_max, X_new_n)
             self_P = np.interp(X_new, self.X, self.P)
             other_P = np.interp(X_new, other.X, other.P)
-            conv_P = np.convolve(self_P, other_P)
+            conv_P = fftconvolve(self_P, other_P, mode='full')
             conv_n = conv_P.shape[0]
             conv_X = np.linspace(2 * X_new.min(), 2 * X_new.max(), conv_n)
             return self.__class__(conv_X, conv_P, kind=self.kind)
@@ -367,27 +449,43 @@ class MathRandomVariable(BaseRandomVariable):
             return self
         else:
             return self.__add__(other)
+
+    def pad_with_0s(self):
+        X = np.append(self.X, self.X.max() + 1E-30)
+        X = np.insert(X, 0, self.X.min() - 1E-30)
+        P = np.append(self.P, 0)
+        P = np.insert(P, 0, 0)
+        return self.__class__(
+            X, P, val=self.val, low=self.low, high=self.high, kind=self.kind
+        )
     
-    def __mul__(self, other):
+    def __mul__(self, other, integrate=False):
         if isinstance(other, MathRandomVariable):
-            f1 = self.function()
-            f2 = other.function()
-            X1 = self.X
-            X2 = other.X
-            X1inc = (X1[-1] - X1[0]) / X1.shape[0]
-            X2inc = (X2[-1] - X2[0]) / X2.shape[0]
-            X1min, X1max = tuple(self.percentile(np.array([0.0001, 0.9999])))
-            X2min, X2max = tuple(other.percentile(np.array([0.0001, 0.9999])))
-            Xmin = X1min * X2min
-            Xmax = X1max * X2max
-            X1mean, X2mean = self.mean(), other.mean()
-            Xlen = round((Xmax - Xmin) / max(X1inc, X2inc) / min(X1mean, X2mean))
-            Xlen = max(Xlen, X1.shape[0], X2.shape[0])
-            print(Xlen)
-            Y = np.linspace(Xmin, Xmax, Xlen, endpoint=True)[:, np.newaxis]
-            # Because Y has even spacing, we can use np.sum
-            Py = (f1(X1) * f2(Y / X1) / np.abs(X1)).sum(axis=1)
-            return self.__class__(Y.T[0], Py, kind=self.kind)
+            is_negative = (self.X.min() <= 0) or (other.X.min() <= 0)
+            if integrate or is_negative:
+                s = self.pad_with_0s()
+                o = other.pad_with_0s()
+                f1 = s.function()
+                f2 = o.function()
+                X1 = s.X
+                X2 = o.X
+                X1inc = (X1[-1] - X1[0]) / X1.shape[0]
+                X2inc = (X2[-1] - X2[0]) / X2.shape[0]
+                X1min, X1max = tuple(self.percentile(np.array([0.0001, 0.9999])))
+                X2min, X2max = tuple(other.percentile(np.array([0.0001, 0.9999])))
+                Xmin = X1min * X2min
+                Xmax = X1max * X2max
+                X1mean, X2mean = self.mean(), other.mean()
+                Xlen = round(
+                    (Xmax - Xmin) / max(X1inc, X2inc) / min(X1mean, X2mean)
+                )
+                Xlen = max(Xlen, X1.shape[0], X2.shape[0])
+                Y = np.linspace(Xmin, Xmax, Xlen, endpoint=True)[:, np.newaxis]
+                # Because Y has even spacing, we can use np.sum
+                Py = (f1(X1) * f2(Y / X1) / np.abs(X1)).sum(axis=1)
+                return self.__class__(Y.T[0], Py, kind=self.kind)
+            else:
+                return log__mul__(self, other)
         elif other == 0:
             return 0
         elif other < 0:
@@ -415,21 +513,25 @@ class MathRandomVariable(BaseRandomVariable):
     def __rsub__(self, other):
         return (-1 * self) + other
         
-    def __truediv__(self, other):
+    def __truediv__(self, other, integrate=False):
         if isinstance(other, MathRandomVariable):
-            f1 = self.function()
-            f2 = other.function()
-            X1 = self.X
-            X2 = other.X
-            Y = np.linspace(
-                X1.min() / np.percentile(other.X, 99.99), 
-                X1.max() / np.percentile(other.X, 0.01), 
-                max(X1.shape[0], X2.shape[0]), 
-                endpoint=True
-            )[:, np.newaxis]
-            # Because Y has even spacing, we can use np.sum
-            Py = (f1(Y * X2) * f2(X2) * np.abs(X2)).sum(axis=1)
-            return self.__class__(Y.T[0], Py, kind=self.kind)
+            is_negative = (self.X.min() <= 0) or (other.X.min() <= 0)
+            if integrate or is_negative:
+                f1 = self.function()
+                f2 = other.function()
+                X1 = self.X
+                X2 = other.X
+                Y = np.linspace(
+                    X1.min() / np.percentile(other.X, 99.99), 
+                    X1.max() / np.percentile(other.X, 0.01), 
+                    max(X1.shape[0], X2.shape[0]), 
+                    endpoint=True
+                )[:, np.newaxis]
+                # Because Y has even spacing, we can use np.sum
+                Py = (f1(Y * X2) * f2(X2) * np.abs(X2)).sum(axis=1)
+                return self.__class__(Y.T[0], Py, kind=self.kind)
+            else:
+                return log__truediv__(self, other)
         elif other < 0:
             return self.__class__(
                 self.X / other, self.P, val=self.val / other,
@@ -453,7 +555,7 @@ class MathRandomVariable(BaseRandomVariable):
                 kind=self.kind
             )
         else:
-            return self.apply(lambda x : 1 / x)
+            return self.apply(lambda x : other / x)
     
     def __rpow__(self, other):
         if isinstance(other, MathRandomVariable):
@@ -478,8 +580,10 @@ class MathRandomVariable(BaseRandomVariable):
     def apply(self, f, kind=None, even_out=True):
         return apply2rv(self, f, kind=kind, even_out=even_out)
 
-    def ten2the(self, kind=None):
-        return self.apply(lambda x: 10**x, kind=kind)
+    def ten2the(self, kind=None, even_out=False):
+        return self.apply(
+            lambda x: 10**x, kind=kind, even_out=even_out
+        )
 
     def scale(self, f, recalculate_bounds=True):
         X, P = f(self.X), self.P

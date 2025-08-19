@@ -3,6 +3,7 @@ from .cumulative_unbinned_module import *
 from .cumulative_binned_module import *
 from .differential_module import *
 from .R_module import *
+from .slope_plot_module import *
 
 def randomize_synth_data(
     synth_list_raw, left_edge_lambda, right_edge_lambda, inc
@@ -123,10 +124,26 @@ def synth_data(
 
 
 def synth_fixed_N(
-    N=20, dmin=1, dmax=10**3.5, n_points=10000,
+    N=20, dmin=1, dmax=10**3.5, n_points=10000, 
     pf=loglog_linear_pf(N1=0.001, slope=-2),
-    n_steps=100, area=10000
+    loglog_cumulative_pf=None,
+    cumulative_pf=None, differential_pf=None,
+    loglog_differential_pf=None, n_steps=100, area=10000
 ):
+    if loglog_cumulative_pf is not None:
+        pf = loglog_cumulative_pf
+    elif cumulative_pf is not None:
+        pf = linear2loglog_pf(cumulative_pf)
+    elif differential_pf is not None:
+        pf = linear2loglog_pf(
+            differential2cumulative_pf(differential_pf)
+        )
+    elif loglog_differential_pf is not None:
+        pf = linear2loglog_pf(
+            differential2cumulative_pf(
+                loglog2linear_pf(loglog_differential_pf)
+            )
+        )
     logD = np.flip(np.linspace(np.log10(dmin), np.log10(dmax), n_points))
     D = 10**logD
     Y = 10**pf(logD) - 10**pf(np.log10(dmax))
