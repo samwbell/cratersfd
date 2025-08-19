@@ -1,6 +1,7 @@
 dev/
 build/
 dist/
+venv/
 calc/figs/*
 !calc/figs/.gitkeep
 calc/saved/*
