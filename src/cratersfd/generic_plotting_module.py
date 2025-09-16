@@ -1,5 +1,5 @@
 from .random_variable_module import *
-from .age_module import *
+from .pareto_module import *
 
 
 def per_decade(n):
@@ -105,43 +105,6 @@ def get_bin_parameters(ds, counts, bins, x_axis_position='left'):
         ])
             
     return x_array
-
-
-def format_cc_plot(
-    sorted_ds, full_density, full_low, full_high, 
-    full_ds=None, ylabel_type='Cumulative ', error_bar_type='log',
-    x_max_pad=0.5
-):
-    
-    plt.xscale('log')
-    plt.yscale('log')
-
-    plt.xticks(size=14)
-    plt.yticks(size=14)
-
-    xmax = np.max(sorted_ds)
-    if full_ds is not None:
-        xmin = np.min(full_ds)
-    else:
-        xmin = np.min(sorted_ds) 
-    xrange = np.log10(xmax / xmin)
-    plt.xlim([
-        xmin / (10**(0.05 * xrange)), xmax * 10**(x_max_pad * xrange)
-    ])
-
-    ymax = np.nanmax(full_high)
-    if error_bar_type.lower() == 'sqrt(n)':
-        ymin = np.nanmin(full_density) / 10
-    else:
-        ymin = np.nanmin(full_low[full_low > 0])
-    yrange = np.log10(ymax / ymin)
-    plt.ylim([ymin / (10**(0.05 * yrange)), ymax * 10**(0.05 * yrange)])
-
-    plt.ylabel(ylabel_type + rf' Crater Density (km$^{{-2}}$)', size=14)
-    plt.xlabel('Crater Diameter (km)', size=14)
-
-    plt.grid(which='major', linestyle=':', linewidth=0.5, color='black')
-    plt.grid(which='minor', linestyle=':', linewidth=0.25, color='gray')
 
 
 def plot_with_error(

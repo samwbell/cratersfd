@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import math
 from scipy.stats.mstats import gmean
-from scipy.stats import gamma, poisson, linregress, norm, skew, lognorm
+from scipy.stats import (
+    gamma, poisson, linregress, norm, skew, lognorm,
+    truncpareto
+)
 from scipy.special import gammainc, lambertw
 from scipy.special import gamma as gf
 from scipy import optimize
@@ -16,6 +19,15 @@ import pickle as pkl
 import ash
 import time
 import random
+
+
+def poisson_binomial_pmf(ps):
+    pmf = np.zeros(len(ps) + 1)
+    pmf[0] = 1.0
+    for p in ps:
+        pmf[1:] = pmf[1:] * (1 - p) + pmf[:-1] * p
+        pmf[0] *= (1 - p)
+    return pmf
 
 
 def format_runtime(seconds, round_to=5):
@@ -34,9 +46,43 @@ def format_runtime(seconds, round_to=5):
         return_string =  str(days) + ' days, ' + return_string
     return return_string
 
-def runtime(t1, t2):
-    print(format_runtime(t2 - t1))
 
+def time0():
+    time0.t0 = time.perf_counter()
+
+
+def runtime(label=None):
+    t_now = time.perf_counter()
+    t0 = getattr(time0, 't0', None)
+    if t0 is None:
+        print('Call time0() to set a baseline time.')
+    else:
+        if label is None:
+            label_str = ''
+        else:
+            label_str = label + ': '
+        print(label_str + format_runtime(t_now - t0))
+        time0.t0 = time.perf_counter()
+
+
+def full_time0():
+    full_time0.t0 = time.perf_counter()
+    time0.t0 = full_time0.t0
+
+
+def full_runtime(label=None):
+    t_now = time.perf_counter()
+    t0 = getattr(full_time0, 't0', None)
+    if t0 is None:
+        print('Call full_time0() to set a baseline time.')
+    else:
+        if label is None:
+            label_str = ''
+        else:
+            label_str = label + ': '
+        print(label_str + format_runtime(t_now - t0))
+        full_time0.t0 = time.perf_counter()
+        time0.t0 = full_time0.t0
 
 def get_kwargs(func):
     defaults = func.__defaults__
@@ -52,10 +98,6 @@ def get_kwargs(func):
 
 
 def get_arg_names(func):
-    defaults = func.__defaults__
-    if not defaults:
-        return {}
-
     n_args = func.__code__.co_argcount
     var_names = func.__code__.co_varnames
     return var_names[:n_args]

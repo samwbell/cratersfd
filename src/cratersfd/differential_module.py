@@ -346,6 +346,25 @@ def calc_sash(
 calc_ash_dif = calc_sash
 
 
+sfd_rv_dict = {}
+def sash_pdf(    
+    ds, area, d_min=None, 
+    bin_width_exponent=neukum_bwe, d_max=None, 
+    growth_rate=1.3, n_points=10000, n_shifts=200,
+    min_count=1, n_iterations=5, n_alpha_points=10000,
+    return_alphas=False, kind='mean'
+):
+    args = match_args(locals(), calc_sash, exclude='ds')
+    args_key = tuple(list(ds) + list(args.values()) + [kind])
+    if args_key in sfd_rv_dict:
+        sfd_rv = sfd_rv_dict[args_key]
+    else:
+        X, P, _ = calc_sash(ds, **args)
+        sfd_rv = RandomVariable(X, P, kind=kind)
+        sfd_rv_dict[args_key] = sfd_rv
+    return sfd_rv
+
+
 def plot_sash(
     ds, area, d_min=None, 
     bin_width_exponent=per_decade(18), d_max=None, 
@@ -547,6 +566,20 @@ def plot_sash_alpha(
     plt.xlabel('Crater Diameter (km)', size=12)
     plt.ylabel(rf'Negative Cumulative Slope $\alpha$', size=12)
 ash_alpha_plot = plot_sash_alpha
+
+
+def calc_sash_alpha(
+    X, Y, window_length=500, polyorder=5, deriv=1,
+    color='mediumslateblue'
+):
+    logX = np.log10(X)
+    logY = np.log10(Y)
+    dYdX = savgol_filter(
+        logY, window_length=window_length, 
+        polyorder=polyorder, deriv=deriv, 
+        delta=logX[1] - logX[0]
+    )
+    return -1 * dYdX - 1
 
 
 def ash_synth(

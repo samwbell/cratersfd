@@ -170,8 +170,13 @@ class CoreRandomVariable:
                 **self.new_kwargs()
             )
 
-    def update(self, other):
-        other_P = np.interp(self.X, other.X, other.P)
+    def update(self, other, log_space=False):
+        if log_space:
+            other_P = 10**np.interp(
+                np.log10(self.X), np.log10(other.X), np.log10(other.P)
+            )
+        else:
+            other_P = np.interp(self.X, other.X, other.P)
         kwargs = self.__dict__.copy()
         kwargs['val'] = None
         kwargs['low'] = None
@@ -208,7 +213,7 @@ class BaseRandomVariable(CoreRandomVariable):
         self, X, P, val=None, low=None, high=None, kind='median'
     ):
         super().__init__(X, P, val=val, low=low, high=high)
-        self.kind=kind
+        self.kind = kind
 
         if kind is None:
             self.val = None
@@ -395,7 +400,7 @@ def apply2rv(
 
 
 
-def log__mul__(self, other):
+def log__mul__(self, other, trim_tolerance=1E-10):
     log_self = self[self.X > 0].as_kind('mean').apply(
         np.log10, even_out=False
     ).pad_with_0s()
@@ -404,11 +409,11 @@ def log__mul__(self, other):
     ).pad_with_0s()
     return (log_self + log_other).apply(
         lambda x: 10**x, even_out=False
-    ).as_kind(self.kind)
+    ).as_kind(self.kind).trim(1 - trim_tolerance)
 
 
 
-def log__truediv__(self, other):
+def log__truediv__(self, other, trim_tolerance=1E-10):
     log_self = self[self.X > 0].as_kind('mean').apply(
         np.log10, even_out=False
     ).pad_with_0s()
@@ -417,7 +422,7 @@ def log__truediv__(self, other):
     ).pad_with_0s()
     return (log_self - log_other).apply(
         lambda x: 10**x, even_out=False
-    ).as_kind(self.kind)
+    ).as_kind(self.kind).trim(1 - trim_tolerance)
 
 
 

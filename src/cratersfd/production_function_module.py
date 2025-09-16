@@ -108,12 +108,12 @@ def npf_alpha(d):
     return -1 * np.interp(np.log10(d), _logD, _npf_alpha_array) - 1
 
 
-def npf_error(_D):
+def npf_error(D):
     m0 = 0.4 / (np.log10(0.8) - np.log10(0.1))
     m1 = 0.1 / (0 - np.log10(0.8))
     m2 = 0.1 / np.log10(3)
     m3 = 0.65 / (np.log10(75) - np.log10(3))
-    D = np.array(_D).astype('float')
+    D = np.array(D).astype('float')
     return np.piecewise(
         D,
         [
@@ -139,6 +139,10 @@ npf_mars_coefficients = np.array([
 
 def npf_mars(D):
     return polynomial_pf(D, npf_mars_coefficients)
+
+
+def relative_npf_error(d1, d2):
+    return subtract_lognormal_ps(npf_error(d1), npf_error(d2))
 
 
 def geometric_sat(D):

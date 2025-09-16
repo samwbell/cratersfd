@@ -22,7 +22,7 @@ def truncated_pareto_P(d, alpha, dmin=1, dmax=1E4):
     D = D[(D > dmin) & (D < dmax)]
     N = D.shape[0]
     beta = np.sum(np.log(D / dmin))
-    log_P_full = gamma.logpdf(alpha, N + 1, scale = 1 / beta)
+    log_P_full = gamma.logpdf(alpha, N + 1, scale=1 / beta)
     log_truncator = N * np.log((1 - (dmin / dmax)**alpha))
     log_P = log_P_full - log_truncator
     log_P = log_P - log_P.max()
@@ -34,11 +34,9 @@ def truncated_pareto_pdf(
     n_points=10000, alpha=None
 ):
     if alpha is None:
-        _alpha = np.linspace(alpha_min, alpha_max, n_points)
-    else:
-        _alpha = alpha
-    P = truncated_pareto_P(ds, _alpha, dmin=dmin, dmax=dmax)
-    return RandomVariable(_alpha, P, kind='mean')
+        alpha = np.linspace(alpha_min, alpha_max, n_points)
+    P = truncated_pareto_P(ds, alpha, dmin=dmin, dmax=dmax)
+    return RandomVariable(alpha, P, kind='mean')
 
 def synth_flat_slope(N=100, slope=-2, dmin=1, n_datasets=None):
     if n_datasets is None:
