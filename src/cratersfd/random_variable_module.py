@@ -16,7 +16,8 @@ def plot_label(
     label_shift_x, label_shift_y, upshift,
     force_label_side, label_text_size, pdf_label,
     color, label_color, unit, pdf_label_size,
-    pdf_gap_shift, dn, label_x, label_y, mf
+    pdf_gap_shift, dn, label_x, label_y, mf,
+    before_label
 ):
     ax = plt.gca()
     fig = plt.gcf()
@@ -76,11 +77,9 @@ def plot_label(
         upper_str = '+' + upper_str
         lower_str = '-' + lower_str
     num_str = rf'${val_str}_{{{lower_str}}}^{{{upper_str}}}$'
-    label_str = num_str + exp_str
+    label_str = before_label + num_str + exp_str
     if unit is not None:
         label_str += unit
-    # if pdf_label is not None:
-    #     label_str = pdf_label + label_str
     
     min_X = xlim[0]
     max_X = xlim[1]
@@ -106,12 +105,10 @@ def plot_label(
         text_x = text_x_dict[label_side] + label_shift_x
     else:
         text_x = label_x
-    
     if label_color=='same':
         l_color = color
     else:
         l_color = label_color
-
     label_text = plt.text(
         text_x, upshift, label_str, ha=label_side, va='bottom',
         size=label_text_size, color=l_color
@@ -164,14 +161,14 @@ def erase_box(ax):
 def format_cc_plot(
     d_array, full_density, full_low=None, full_high=None, 
     full_ds=None, ylabel_type='Cumulative ', kind='log',
-    x_max_pad=0.1
+    x_max_pad=0.1, fontsize=14
 ):
     
     plt.xscale('log')
     plt.yscale('log')
 
-    plt.xticks(size=14)
-    plt.yticks(size=14)
+    plt.xticks(size=fontsize)
+    plt.yticks(size=fontsize)
 
     if full_low is None:
         full_low = full_density
@@ -196,8 +193,8 @@ def format_cc_plot(
     yrange = np.log10(ymax / ymin)
     plt.ylim([ymin / (10**(0.05 * yrange)), ymax * 10**(0.05 * yrange)])
 
-    plt.ylabel(ylabel_type + rf' Crater Density (km$^{{-2}}$)', size=14)
-    plt.xlabel('Crater Diameter (km)', size=14)
+    plt.ylabel(ylabel_type + rf' Crater Density (km$^{{-2}}$)', size=fontsize)
+    plt.xlabel('Crater Diameter (km)', size=fontsize)
 
     plt.grid(which='major', linestyle=':', linewidth=0.5, color='black')
     plt.grid(which='minor', linestyle=':', linewidth=0.25, color='gray')
@@ -215,9 +212,10 @@ class RandomVariable(MathRandomVariable):
         pdf_label=None, standardized=True, force_erase_box=None,
         pdf_label_size=None, pdf_gap_shift=0, dn=None,
         label_x=None, label_y=None, lw=2, mf=None, 
-        plot_error_bars=True, edge_lines=False, **kwargs
+        plot_error_bars=True, edge_lines=False,
+        before_label='', **kwargs
     ):
-            
+  
         axis_exists = any(plt.gcf().get_axes())
         if not axis_exists:
             fig = plt.figure(figsize=(5, 2))
@@ -283,14 +281,15 @@ class RandomVariable(MathRandomVariable):
                 _mf = False
         else:
             _mf = mf
-        
+
         if label:
             plot_label(
                 rounding_n, low, high, val, X, P, xlim,
                 label_shift_x, label_shift_y, upshift,
                 force_label_side, label_text_size, pdf_label,
                 color, label_color, unit, pdf_label_size,
-                pdf_gap_shift, dn, label_x, label_y, _mf
+                pdf_gap_shift, dn, label_x, label_y, _mf,
+                before_label
             )
 
     def plot_differential(self, **kwargs):
@@ -303,45 +302,45 @@ class RandomVariable(MathRandomVariable):
 
     
     
-def apply_factor(
-    n, factor, n_stds=6, n_points=None, kind='mean'
+def factor_pdf(
+    factor, n_stds=6, n_points=10000, kind='mean',
+    spacing='linear'
 ):
-    if n_points is None:
-        if isinstance(n, MathRandomVariable):
-            Xlen = n.X.shape[0]
-        else:
-            Xlen = 10000
-    else:
-        Xlen = n_points
     s = np.log(factor)
     scale = np.exp(-0.5 * s**2) 
     Xmin = scale * factor**(-1 * n_stds)
     Xmax = scale * factor**n_stds
-    X = np.linspace(Xmin, Xmax, Xlen)
+    if spacing == 'linear':
+        X = np.linspace(Xmin, Xmax, n_points)
+    elif spacing == 'log':
+        X = np.logspace(
+            np.log10(Xmin), np.log10(Xmax), n_points
+        )
+    else:
+        raise ValueError(
+            'The spacing must be either \'linear\''
+            'or \'log\'.'
+        )
     P = lognorm.pdf(X, s=s, scale=scale)
-    factor_rv = RandomVariable(X, P, kind=kind)
-    return n * factor_rv
+    return RandomVariable(X, P, kind=kind)
 
 
 
-def factor_pdf(
+def apply_factor(
     n, factor, n_stds=6, n_points=None, kind='mean'
 ):
-    if n_points is None:
-        if isinstance(n, MathRandomVariable):
-            Xlen = n.X.shape[0]
-        else:
-            Xlen = 10000
+    if factor == 1.0:
+        return n
     else:
-        Xlen = n_points
-    s = np.log(factor)
-    scale = n * np.exp(-0.5 * s**2)
-    Xmin = scale * factor**(-1 * n_stds)
-    Xmax = scale * factor**n_stds
-    X = np.linspace(Xmin, Xmax, Xlen)
-    P = lognorm.pdf(X, s=s, scale=scale)
-    factor_rv = RandomVariable(X, P, kind=kind)
-    return factor_rv
+        if n_points is None:
+            if isinstance(n, MathRandomVariable):
+                n_points = n.X.shape[0]
+            else:
+                n_points = 10000
+        factor_rv = factor_pdf(
+            **match_args(locals(), factor_pdf)
+        )
+        return n * factor_rv
 
 
 
@@ -422,6 +421,8 @@ def subtract_lognormal_ps(p1, p2):
 def lambda_error_lognormal(
     N, random=1.5, systematic=1.1, additional=1.1
 ):
+    if N < 1:
+        N = 1
     return np.exp(np.sqrt(np.sum([
         np.log((np.exp(np.log(random)**2) - 1) / N + 1),
         np.log(systematic)**2, np.log(additional)**2
@@ -466,20 +467,25 @@ def lambda_pdf_from_N_pmf(
     X_max = gamma.ppf(1 - cum_prob_edge, N_max + 1)
     if apply_error and error_exists:
         kwargs = match_kwargs(locals(), lambda_error_lognormal)
-        min_factor = lambda_error_lognormal(N_min, **kwargs)
         max_factor = lambda_error_lognormal(N_max, **kwargs)
-        min_rv = apply_factor(1, min_factor, n_points=100)
         max_rv = apply_factor(1, max_factor, n_points=100)
-        X_min *= min_rv.percentile(0.01)
         X_max *= max_rv.percentile(0.99)
-    
-    if gamma.pdf(X_min, N_min + 1) > 0.001:
+        min_factor = lambda_error_lognormal(N_min, **kwargs)
+        min_rv = apply_factor(1, min_factor, n_points=100)
+        X_min *= min_rv.percentile(0.01)
+
+    if (
+        gamma.pdf(X_min, N_min + 1) > 0.001 
+        and gamma.pdf(1E-150, N_min + 1) < 0.001
+    ):
         X_min_search = np.logspace(-150, np.log10(X_min), 1000)
         X_min = np.interp(
             0.001, gamma.pdf(X_min_search, N_min + 1), X_min_search
         )
 
+    X_min = max(X_min, X_max / n_points)
     X = np.linspace(X_min, X_max, n_points, endpoint=True)
+
     if apply_error and error_exists:
         lambda_matrix = np.array([
             lambda_with_error(X, N, **kwargs).match_X(X).P * weight 
@@ -491,7 +497,7 @@ def lambda_pdf_from_N_pmf(
             for N, weight in zip(N_array, pmf)
         ])
         
-    return RandomVariable(X, lambda_matrix.sum(axis=0))
+    return RandomVariable(X, lambda_matrix.sum(axis=0)).pad_with_0s()
     
     
     
@@ -743,7 +749,12 @@ def true_error_pdf_single(
             X, P, val=val, low=low, high=high, kind=kind
         )
 
-        if apply_error:
+        errors_exist = (
+            random != 1.0 
+            and systematic != 1.0
+            and additional != 1.0
+        )
+        if apply_error and errors_exist:
             return_rv *= apply_factor(1, lambda_error_lognormal(
                 **match_args(locals(), lambda_error_lognormal)
             ))

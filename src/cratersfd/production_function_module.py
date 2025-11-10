@@ -1,16 +1,10 @@
 from .random_variable_module import *
 
 
-def linear_pf(N1=0.001, slope=-2):
-    def out_f(d):
-        return 10**(slope * np.log10(d) + np.log10(N1))
-    return out_f
-
-
-def loglog_linear_pf(N1=0.001, slope=-2):
-    def out_f(logd):
-        return slope * logd + np.log10(N1)
-    return out_f
+def fit_pf(X, Y):
+    def f(D):
+        return np.interp(D, X, Y)
+    return f
 
 
 def linear2loglog_pf(pf):
@@ -46,8 +40,63 @@ def differential2cumulative_pf(
     def c_pf(d):
         return np.interp(d, D, cumulative_array)
     return c_pf
+
+
+def differential2R_pf(
+    d_pf, dmin=0.005, dmax=1E4, n_points=10000
+):
+    def R_pf(d):
+        return d_pf(d) * d**3
+    return R_pf
     
-    
+
+def R2differential_pf(
+    R_pf, dmin=0.005, dmax=1E4, n_points=10000
+):
+    def d_pf(d):
+        return R_pf(d) / d**3
+    return d_pf
+
+
+def get_saturated_pf(X, Y, plot_type='differential', at=None):
+    if plot_type == 'R':
+        r_pf = fit_pf(X, Y)
+    elif plot_type == 'differential':
+        d_pf = fit_pf(X, Y)
+        r_pf = differential2R_pf(d_pf)
+    else:
+        raise ValueError(
+            'plot_type must either be \'differential\' or \'R\''
+        )
+    if at is None:
+        peak_D = X[np.argmax(r_pf(X))]
+        peak_R = np.max(r_pf(X))
+    else:
+        peak_D = at
+        peak_R = r_pf(at)
+    def s_pf(D):
+        return np.piecewise(
+            D, [D < peak_D, D >= peak_D],
+            [r_pf(D[D < peak_D]), peak_R]
+        )
+    if plot_type == 'R':
+        return s_pf
+    else:
+        return R2differential_pf(s_pf)
+
+
+def linear_pf(N1=0.001, slope=-2):
+    def out_f(d):
+        return 10**(slope * np.log10(d) + np.log10(N1))
+    return out_f
+
+
+def loglog_linear_pf(N1=0.001, slope=-2):
+    def out_f(logd):
+        return slope * logd + np.log10(N1)
+    return out_f
+
+        
 def polynomial_pf(D, coefficients):
     logD = np.log10(D)
     a_n = np.array(coefficients)

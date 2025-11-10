@@ -109,9 +109,9 @@ def get_bin_parameters(ds, counts, bins, x_axis_position='left'):
 
 def plot_with_error(
     ds, val, lower, upper, color='black', alpha=1.0, ms=4, 
-    plot_error_bars=True, plot_points=True, error_bar_type='log',  
+    plot_error_bars=True, plot_points=True, kind='log',  
     ylabel_type='Cumulative ', elinewidth=0.5, do_formatting=None,
-    point_label=None
+    point_label=None, fontsize=14
 ):
 
     axis_exists = any(plt.gcf().get_axes())
@@ -142,7 +142,7 @@ def plot_with_error(
     if format_bool:
         format_cc_plot(
             ds, val, val - lower, val + upper,
-            ylabel_type=ylabel_type, error_bar_type=error_bar_type
+            **match_kwargs(locals(), format_cc_plot)
         )
         
 
@@ -150,7 +150,7 @@ def plot_pdf_list(
     ds, pdf_list, color='black', alpha=1.0, plot_error_bars=True, 
     plot_points=True, kind='log', area=None, 
     ylabel_type='Cumulative ', ms=4, elinewidth=0.5,
-    do_formatting=True
+    do_formatting=True, fontsize=14
 ):
 
     for i in range(len(pdf_list)):

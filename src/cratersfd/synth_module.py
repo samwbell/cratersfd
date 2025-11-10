@@ -441,3 +441,99 @@ def plot_log_fit(slope_list, label_text='', upshift=0, ax=None):
          color='black', ha='right')
     
     
+synth_sash_dict = {}
+def synth_sash(
+    ds, area, d_min=None, use_saved_data=True,
+    differential_pf=None, n_steps=100,
+    bin_width_exponent=neukum_bwe, d_max=1E4, 
+    growth_rate=1.3, n_points=10000, n_shifts=200,
+    min_count=1, n_iterations=5, n_alpha_points=10000
+):
+
+    args = match_args(
+        locals(), synth_sash, exclude=['ds', 'use_saved_data']
+    )
+    args_key = tuple(list(ds) + list(args.values()))
+
+    if use_saved_data and (args_key in synth_sash_dict):
+
+            returns = synth_sash_dict[args_key]
+
+    else:
+
+        if differential_pf is None:
+            X, Y = calc_sash(**match_args(locals(), calc_sash))
+            differential_pf = fit_pf(X, Y)
+        
+        synth_d_list = synth_fixed_N(
+            N=np.array(ds).size, dmin=safe_d_min(ds), dmax=d_max,
+            **match_kwargs(locals(), synth_fixed_N)
+        )
+    
+        synth_mean_Ys = []
+        for synth_ds in synth_d_list[0]:
+            synth_X, synth_mean_Y, Ys = calc_sash(
+                synth_ds, area,
+                **match_kwargs(locals(), calc_sash)
+            )
+            synth_mean_Ys.append(synth_mean_Y)
+
+        returns = synth_X, np.array(synth_mean_Ys)
+        synth_sash_dict[args_key] = returns
+
+    return returns
+
+
+def plot_sash_synth(
+    ds, area, d_min=None, plot_type='differential',
+    differential_pf=None, n_steps=100,
+    bin_width_exponent=neukum_bwe, d_max=1E4, 
+    growth_rate=1.3, n_points=10000, n_shifts=200,
+    min_count=1, n_iterations=5, n_alpha_points=10000,
+    color='mediumslateblue', fill_alpha=0.15, lw=1.5, 
+    ls=':', fontsize=14, X=None, synth_mean_Ys=None
+):
+    if (X is None) or (synth_mean_Ys is None):
+        X, synth_mean_Ys = synth_sash(
+            **match_args(locals(), synth_sash)
+        )
+
+    params_list = [
+        gamma.fit(samples, floc=0)
+        for samples in synth_mean_Ys.T
+    ]
+    bounds_list = [
+        gamma.ppf([1 - p_1_sigma, p_1_sigma], *params)
+        for params in params_list
+    ]
+    low, high = zip(*bounds_list)
+    if plot_type == 'R':
+        low *= X**3
+        high *= X**3
+        
+    plt.fill_between(
+        X, low, high, facecolor=color, alpha=fill_alpha
+    )
+
+    norm = np.array(ds).size / area / trapezoid(
+        differential_pf(X), X
+    )
+    if plot_type == 'R':
+        Y = norm * differential_pf(X) * X**3
+        ylabel_type = 'R '
+    elif plot_type == 'differential':
+        Y = norm * differential_pf(X)
+        ylabel_type='Differential '
+    else:
+        raise ValueError(
+            'plot_type must either be \'differential\' or \'R\''
+        )
+    plt.plot(X, Y, color=color, lw=lw, ls=ls)
+    format_cc_plot(
+        X, Y, np.array(low), np.array(high),
+        ylabel_type=ylabel_type, x_max_pad=0,
+        fontsize=fontsize
+    )
+
+    return X, synth_mean_Ys
+

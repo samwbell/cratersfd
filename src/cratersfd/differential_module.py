@@ -77,7 +77,7 @@ def plot_differential(
     fraction=1.0, pf=npf_new_loglog, 
     do_correction=False, ax='None', color='black', 
     alpha=1.0, plot_points=True, plot_error_bars=True,
-    x_axis_position='linear_center', ms=4, kind='log'
+    x_axis_position='linear_center', ms=4, kind='log', fontsize=14
 ):
     args = match_args(locals(), calc_differential_pdfs)
     bin_ds, pdf_list, bins = calc_differential_pdfs(**args)
@@ -258,91 +258,101 @@ def digitize_bins(X, bins, values):
     return values[indices.astype(int)]
 
 
+sash_dict = {}
 def calc_sash(
     ds, area, d_min=None, 
     bin_width_exponent=neukum_bwe, d_max=None, 
-    growth_rate=1.3, n_points=10000, n_shifts=200,
+    growth_rate=1.2, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=10000,
     return_alphas=False
 ):
-    
-    fractions = 1.0 - np.linspace(0, 1, n_shifts + 1, endpoint=False)
-
-    if (d_min is None) or (d_min == np.min(ds)):
-        d_min = safe_d_min(ds)
-
-    if d_max is None:
-        d_max = 1.3 * np.max(ds)
-
-    bin_info_list = [
-        bin_craters(
-            **match_args(locals(), bin_craters),
-            start_at_reference_point=True, reference_point=d_min
+    args = match_args(locals(), calc_sash, exclude='ds')
+    args_key = tuple(list(ds) + list(args.values()))
+    if args_key in sash_dict:
+        return sash_dict[args_key]
+    else:
+        fractions = 1.0 - np.linspace(
+            0, 1, n_shifts + 1, endpoint=False
         )
-        for fraction in fractions
-    ]
-    counts_list, bins_list, _, _ = zip(*bin_info_list)
     
-    X = np.logspace(np.log10(d_min), np.log10(d_max), n_points)
-    X[0] = d_min
-    X[-1] = d_max
-
-    dif_line_params = [
-        dif_line_from_ds(
-            ds, area, bins, X=X, n_alpha_points=n_alpha_points,
-            n_points=n_points, return_alphas=True
-        ) 
-        for bins in bins_list
-    ]
-
-    Ys, alphas_list = zip(*dif_line_params)
-
-    mean_Y = np.mean(Ys, axis=0)
-
-    tp_alpha_matrix = [
-        np.interp(X, bins[:-1], alphas)
-        for bins, alphas in zip(bins_list, alphas_list)
-    ]
-    mean_tp_Alpha = np.mean(tp_alpha_matrix, axis=0)
-
-    for i in range(n_iterations - 1):
-        
-        alphas_list = []
-        for bins in bins_list:
-            alphas = []
-            for i in range(bins.shape[0] - 1):
-                ei, ei1 = bins[i], bins[i + 1]
-                ei1 = min(ei1, np.max(ds) * 3)
-                logYi = np.log10(np.interp(ei, X, mean_Y))
-                logYi1 = np.log10(np.interp(ei1, X, mean_Y))
-                rise = logYi1 - logYi
-                run = np.log10(ei1 / ei)
-                alphas.append(-1 * rise / run - 1)
-            alphas_list.append(alphas)
-            
-        Ys = [
-            dif_line(
-                alphas, counts, area, bins, X=X,
-                n_points=n_points
-            ) 
-            for counts, bins, alphas 
-            in zip(counts_list, bins_list, alphas_list)
+        if (d_min is None) or (d_min == np.min(ds)):
+            d_min = safe_d_min(ds)
+    
+        if d_max is None:
+            d_max = 10 * np.max(ds)
+    
+        bin_info_list = [
+            bin_craters(
+                **match_args(locals(), bin_craters),
+                start_at_reference_point=True, reference_point=d_min
+            )
+            for fraction in fractions
         ]
+        counts_list, bins_list, _, _ = zip(*bin_info_list)
         
+        X = np.logspace(np.log10(d_min), np.log10(d_max), n_points)
+        X[0] = d_min
+        X[-1] = d_max
+    
+        dif_line_params = [
+            dif_line_from_ds(
+                ds, area, bins, X=X, n_alpha_points=n_alpha_points,
+                n_points=n_points, return_alphas=True
+            ) 
+            for bins in bins_list
+        ]
+    
+        Ys, alphas_list = zip(*dif_line_params)
+    
         mean_Y = np.mean(Ys, axis=0)
-
-    if return_alphas:
-        alpha_matrix = [
+    
+        tp_alpha_matrix = [
             np.interp(X, bins[:-1], alphas)
             for bins, alphas in zip(bins_list, alphas_list)
         ]
-        mean_Alpha = np.mean(alpha_matrix, axis=0)
-        return (
-            X, mean_Y, Ys, mean_Alpha, alpha_matrix,
-            mean_tp_Alpha, tp_alpha_matrix
-        )
-    else:
-        return X, mean_Y, Ys
+        mean_tp_Alpha = np.mean(tp_alpha_matrix, axis=0)
+    
+        for i in range(n_iterations - 1):
+            
+            alphas_list = []
+            for bins in bins_list:
+                alphas = []
+                for i in range(bins.shape[0] - 1):
+                    ei, ei1 = bins[i], bins[i + 1]
+                    ei1 = min(ei1, np.max(ds) * 3)
+                    logYi = np.log10(np.interp(ei, X, mean_Y))
+                    logYi1 = np.log10(np.interp(ei1, X, mean_Y))
+                    rise = logYi1 - logYi
+                    run = np.log10(ei1 / ei)
+                    alphas.append(-1 * rise / run - 1)
+                alphas_list.append(alphas)
+                
+            Ys = [
+                dif_line(
+                    alphas, counts, area, bins, X=X,
+                    n_points=n_points
+                ) 
+                for counts, bins, alphas 
+                in zip(counts_list, bins_list, alphas_list)
+            ]
+            
+            mean_Y = np.mean(Ys, axis=0)
+    
+        if return_alphas:
+            alpha_matrix = [
+                np.interp(X, bins[:-1], alphas)
+                for bins, alphas in zip(bins_list, alphas_list)
+            ]
+            mean_Alpha = np.mean(alpha_matrix, axis=0)
+            returns = (
+                X, mean_Y, Ys, mean_Alpha, alpha_matrix,
+                mean_tp_Alpha, tp_alpha_matrix
+            )
+        else:
+            returns = X, mean_Y, Ys
+    
+        sash_dict[args_key] = returns
+        return returns
 calc_ash_dif = calc_sash
 
 
@@ -350,7 +360,7 @@ sfd_rv_dict = {}
 def sash_pdf(    
     ds, area, d_min=None, 
     bin_width_exponent=neukum_bwe, d_max=None, 
-    growth_rate=1.3, n_points=10000, n_shifts=200,
+    growth_rate=1.2, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=10000,
     return_alphas=False, kind='mean'
 ):
@@ -372,10 +382,10 @@ def plot_sash(
     color='mediumslateblue', plot_lines=False, lw=1.2,
     line_color='mediumslateblue', line_lw=0.2,
     min_count=1, n_iterations=5, n_alpha_points=10000,
-    return_alphas=False, plot_error=True,
+    return_alphas=False, plot_error=False,
     fill_alpha=0.15, kernel=None, reduction_factor=1.0,
-    error_bin_width_exponent=per_decade(18),
-    error_downsample=10, kind='log'
+    error_bin_width_exponent=per_decade(18), fontsize=14,
+    error_downsample=10, kind='log', plotting_max_factor=1.3
 ):
 
     t1 = time.time()
@@ -396,8 +406,8 @@ def plot_sash(
 
     plt.plot(X, mean_Y, color, lw=lw)
 
-    Ycut = mean_Y[X <= 100 * np.max(ds)]
-    Xcut = X[X <= 100 * np.max(ds)]
+    Ycut = mean_Y[X <= plotting_max_factor * np.max(ds)]
+    Xcut = X[X <= plotting_max_factor * np.max(ds)]
 
     if plot_error:
         Xp = Xcut[::error_downsample]
@@ -431,14 +441,14 @@ def plot_sash(
 
         format_cc_plot(
             Xp, val, low, high, ylabel_type='Differential ',
-            x_max_pad=0
+            x_max_pad=0, fontsize=fontsize
         )
 
     else:
 
         format_cc_plot(
             Xcut, Ycut, Ycut, Ycut, ylabel_type='Differential ',
-            x_max_pad=0
+            x_max_pad=0, fontsize=fontsize
         )
 
     if return_alphas:
@@ -505,7 +515,8 @@ def plot_differential_binned(
     d_min=None, d_max=1E4, growth_rate=1.0,
     fraction=1.0, min_count=1, bins=None,
     kind='log', color='mediumslateblue', lw=1.5,
-    fill_alpha=0.15, alpha=None, plotting_n=30
+    fill_alpha=0.15, alpha=None, plotting_n=30,
+    fontsize=14
 ):
     point_ds, rho_rvs, bins = calc_differential_binned(
         **match_args(locals(), calc_differential_binned)
@@ -522,7 +533,7 @@ def plot_differential_binned(
     
     format_cc_plot(
         point_ds, val, low, high, ylabel_type='Differential ',
-        x_max_pad=0
+        x_max_pad=0, fontsize=fontsize
     )
 
 
@@ -582,35 +593,17 @@ def calc_sash_alpha(
     return -1 * dYdX - 1
 
 
-def ash_synth(
-    X, mean_Y, area, dmin, n_synths=100,
-    bin_width_exponent=neukum_bwe, dmax=1E4, 
-    growth_rate=1.3, n_points=10000, n_shifts=200,
-    min_count=1, n_iterations=5, n_alpha_points=10000
+def plot_sash_alpha(
+    X, Y, window_length=500, polyorder=5, deriv=1,
+    color='mediumslateblue'
 ):
-    def ash_fit_pf(X, mean_Y):
-        def f(D):
-            return np.interp(D, X, mean_Y)
-        return f
-    
-    synth_ash_fit_d_list = synth_fixed_N(
-        N=np.array(ds).shape[0], dmin=dmin, 
-        differential_pf=ash_fit_pf(X, mean_Y),
-        n_steps=n_synths
-    )
-    
-    synth_mean_Ys = []
-    for synth_ds in synth_ash_fit_d_list[0]:
-        synth_X, synth_mean_Y, Ys = calc_ash_dif(
-            synth_ds, area, dmin,
-            bin_width_exponent=bin_width_exponent,
-            growth_rate=growth_rate, n_points=n_points,
-            n_shifts=n_shifts, min_count=min_count,
-            n_iterations=n_iterations,
-            n_alpha_points=n_alpha_points
-        )
-        synth_mean_Ys.append(synth_mean_Y)
-
-    return np.array(synth_mean_Ys)
+    Alpha = calc_sash_alpha(**match_args(locals(), calc_sash_alpha))
+    plt.plot(X, Alpha, color=color)
+    plt.xscale('log')
+    plt.xticks(size=12)
+    plt.yticks(size=12)
+    plt.xlabel('Crater Diameter (km)', size=12)
+    plt.ylabel(rf'Negative Cumulative Slope $\alpha$', size=12)
+    return X, Alpha
 
 

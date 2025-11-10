@@ -134,6 +134,6 @@ def tp_eq(d, dmin=1.0, dmax=1E4, alpha=2):
     denom = 1 - (dmin / dmax)**alpha
     return num / denom
 
-    truncated_pareto_equation = tp_eq
+truncated_pareto_equation = tp_eq
 
 

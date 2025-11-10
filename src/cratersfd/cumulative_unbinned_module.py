@@ -77,7 +77,7 @@ def plot_cumulative_unbinned(
     plot_points=False, plot_point_error_bars=False, point_color='same',
     center=False, d_min=None, d_max=10000, kind='log', fill_alpha=0.15,
     do_formatting=True, elinewidth=0.5, point_label=None,
-    plot_bounds=False
+    plot_bounds=False, fontsize=14
 ):
     
     axis_exists = any(plt.gcf().get_axes())
@@ -135,8 +135,7 @@ def plot_cumulative_unbinned(
     if format_bool:
         format_cc_plot(
             sorted_ds, full_density, full_low, full_high, full_ds=full_ds,
-            ylabel_type='Cumulative ', error_bar_type=kind
+            ylabel_type='Cumulative ', kind=kind, fontsize=fontsize
         )
-
 plot_cumulative = plot_cumulative_unbinned
 

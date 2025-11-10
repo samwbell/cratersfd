@@ -43,7 +43,8 @@ def plot_R(
     fraction=1.0, pf=npf_new_loglog, 
     do_correction=True, ax='None', color='black', 
     alpha=1.0, plot_points=True, plot_error_bars=True,
-    x_axis_position='log_center', ms=4, kind='log'
+    x_axis_position='log_center', ms=4, kind='log',
+    elinewidth=0.5, fontsize=14
 ):
     args = match_args(locals(), calc_R_pdfs)
     bin_ds, pdf_list = calc_R_pdfs(**args)
@@ -73,9 +74,9 @@ def plot_sash_R(
     color='mediumslateblue', plot_lines=False, lw=1.2,
     line_color='mediumslateblue', line_lw=0.2,
     min_count=1, n_iterations=5, n_alpha_points=10000,
-    plot_error=True, fill_alpha=0.15, kernel=None, 
+    plot_error=False, fill_alpha=0.15, kernel=None, 
     reduction_factor=1.0, error_downsample=10, kind='log',
-    error_bin_width_exponent=per_decade(18)
+    error_bin_width_exponent=per_decade(18), fontsize=14
 ):
     t1 = time.time()
     args = match_args(locals(), calc_sash_R)
@@ -127,16 +128,77 @@ def plot_sash_R(
 
         format_cc_plot(
             Xp, val, low, high, ylabel_type='R ',
-            x_max_pad=0
+            x_max_pad=0, fontsize=fontsize
         )
 
     else:
 
         format_cc_plot(
             Xcut, Ycut, Ycut, Ycut, ylabel_type='R ',
-            x_max_pad=0
+            x_max_pad=0, fontsize=fontsize
         )
     
     return X, mean_Y
+
+
+def plot_R_binned(
+    ds, area, bin_width_exponent=neukum_bwe,
+    d_min=None, d_max=1E4, growth_rate=1.0,
+    fraction=1.0, min_count=1, bins=None,
+    kind='log', color='mediumslateblue', lw=1.5,
+    fill_alpha=0.15, alpha=None, plotting_n=30,
+    reference_point=1.0
+):
+    point_ds, rho_rvs, bins = calc_differential_binned(
+        **match_args(locals(), calc_differential_binned)
+    )
+
+    val = np.array([rv.val for rv in rho_rvs])
+    low = np.array([rv.low for rv in rho_rvs])
+    high = np.array([rv.high for rv in rho_rvs])
+    
+    plt.plot(point_ds, val * point_ds**3, color=color, lw=lw)
+    plt.fill_between(
+        point_ds, low * point_ds**3, high * point_ds**3, 
+        facecolor=color, alpha=fill_alpha
+    )
+    
+    format_cc_plot(
+        point_ds, val, low, high, ylabel_type='Differential ',
+        x_max_pad=0
+    )
+
+
+def plot_R_N(
+    N, area, pf=npf_new_dif, dmin=0.005, 
+    dmax=1E3, color='k', lw=1
+):
+    Xpf = np.logspace(np.log10(dmin), np.log10(dmax), 10000)
+    dif_integral = trapezoid(pf(Xpf), Xpf)
+    Ypf = pf(Xpf) / dif_integral * N / area * Xpf**3
+    plt.plot(Xpf, Ypf, color, lw=lw)
+plot_npf_R_N = plot_R_N
+
+
+def plot_kde_R(
+    ds, area, d_min=None, d_max=1E4, n_points=10000,
+    color='black', lw=1.5
+): 
+    if d_min is None:
+        d_min = np.min(ds)
+    logD = np.linspace(np.log10(d_min), np.log10(d_max), n_points)
+    D = 10**logD
+    ds = np.flip(np.sort(ds))
+    i = 0
+    log_ds = np.log10(ds[:,np.newaxis])
+    kde_matrix = norm.pdf(logD, log_ds, np.log10(1.1)) / area
+    normalization = 1 / ds[:,np.newaxis] / math.log(10)
+    kde = np.sum(kde_matrix * normalization, axis=0) * D**3
+    plt.plot(D, kde, color=color, lw=lw)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim([d_min, 2 * np.max(ds)])
+    in_range = (D >= d_min) & (D <= 2 * np.max(ds))
+    plt.ylim([kde[in_range].min(), kde[in_range].max()])
 
 

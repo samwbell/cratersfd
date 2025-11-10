@@ -86,7 +86,9 @@ def N_pmf(
     return DiscreteRandomVariable(N_array, pmf)
 
 
-def build_posterior_lookup(sfd_rv, dmin, d_random, n_points=10000):
+def build_posterior_lookup(
+    sfd_rv, dmin, d_random, dmax, n_points=10000
+):
     s = float(np.log(d_random))
     
     t = np.linspace(
@@ -153,7 +155,7 @@ def N_pmf_fast(
         return DiscreteRandomVariable(np.array([0]), np.array([1.0]))
 
     p_lookup = build_posterior_lookup(
-        sfd_rv, dmin, d_random, n_points=n_points
+        sfd_rv, dmin, d_random, dmax, n_points=n_points
     )
     ps = p_lookup(sampled_ds)
 
@@ -200,6 +202,15 @@ def N1_pdf(
     return N1_rv
 
 
+def age_pdf_only_counting_error(
+    ds, area, dmin, N=None, cf_inv=ncf_inv
+):
+    if N is None:
+        N = ds[ds >= dmin].size
+    N1_rv = N1_pdf(N, area, dmin)
+    return N1_rv.apply(cf_inv)
+
+
 def age_pdf(
     ds, area, dmin, dmax=None, pf=npf_new, cf_inv=ncf_inv, 
     kind='median', d_random=1.05, 
@@ -208,50 +219,55 @@ def age_pdf(
     d_min=None, bin_width_exponent=neukum_bwe, d_max=None, 
     growth_rate=1.3, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=10000,
-    n_N1_points=10000, n_dmin_samples=50
+    n_N1_points=10000, n_dmin_samples=50,
+    only_counting_error=False
 ):
-
-    if cf_error is None:
-        cf_error = 1.0
-    if d_random is None:
-        d_random = 1.0
-    if d_systematic is None:
-        d_systematic = 1.0
-    diameter_error = (d_random != 1.0) or (d_systematic != 1.0)
-    if diameter_error and (sfd_rv is None):
-        args = match_args(locals(), sash_pdf, exclude='kind')
-        sfd_rv = sash_pdf(**args)
-    
-    if isinstance(dmin, MathRandomVariable):
-        sampled_rv = dmin.trim(0.99).downsample(n_dmin_samples)
-        dmins, dmin_weights = sampled_rv.X, sampled_rv.P
-        N1_pdf_kwargs = match_kwargs(locals(), N1_pdf)
-        N_pmf_kwargs = match_kwargs(locals(), N_pmf)
-        N_rvs = [
-            N_pmf(ds, area, _dmin, **N_pmf_kwargs)
-            for _dmin in dmins
-        ]
-        N1_rvs = [
-            N1_pdf(N_rv, area, _dmin, **N1_pdf_kwargs)
-            for N_rv, _dmin in zip(N_rvs, dmins)
-        ]
-        N1_min = np.min([N1_rv.X.min() for N1_rv in N1_rvs])
-        N1_max = np.max([N1_rv.X.max() for N1_rv in N1_rvs])
-        X = np.linspace(N1_min, N1_max, n_N1_points)
-        N1_rv_Ps = [N1_rv.match_X(X).P for N1_rv in N1_rvs]
-        N1_rv_matrix = np.array([
-            P * w for P, w in zip(N1_rv_Ps, dmin_weights)
-        ])
-        summed_P = N1_rv_matrix.sum(axis=0)
-        N1_rv = RandomVariable(X, summed_P, kind=kind)
+    if only_counting_error:
+        return age_pdf_only_counting_error(
+            **match_args(locals(), age_pdf_only_counting_error)
+        )
     else:
-        if (d_random is None) or (d_random == 1.0):
-            N = ds[ds > dmin].shape[0]
+        if cf_error is None:
+            cf_error = 1.0
+        if d_random is None:
+            d_random = 1.0
+        if d_systematic is None:
+            d_systematic = 1.0
+        diameter_error = (d_random != 1.0) or (d_systematic != 1.0)
+        if diameter_error and (sfd_rv is None):
+            args = match_args(locals(), sash_pdf, exclude='kind')
+            sfd_rv = sash_pdf(**args)
+        
+        if isinstance(dmin, MathRandomVariable):
+            sampled_rv = dmin.trim(0.99).downsample(n_dmin_samples)
+            dmins, dmin_weights = sampled_rv.X, sampled_rv.P
+            N1_pdf_kwargs = match_kwargs(locals(), N1_pdf)
+            N_pmf_kwargs = match_kwargs(locals(), N_pmf)
+            N_rvs = [
+                N_pmf(ds, area, _dmin, **N_pmf_kwargs)
+                for _dmin in dmins
+            ]
+            N1_rvs = [
+                N1_pdf(N_rv, area, _dmin, **N1_pdf_kwargs)
+                for N_rv, _dmin in zip(N_rvs, dmins)
+            ]
+            N1_min = np.min([N1_rv.X.min() for N1_rv in N1_rvs])
+            N1_max = np.max([N1_rv.X.max() for N1_rv in N1_rvs])
+            X = np.linspace(N1_min, N1_max, n_N1_points)
+            N1_rv_Ps = [N1_rv.match_X(X).P for N1_rv in N1_rvs]
+            N1_rv_matrix = np.array([
+                P * w for P, w in zip(N1_rv_Ps, dmin_weights)
+            ])
+            summed_P = N1_rv_matrix.sum(axis=0)
+            N1_rv = RandomVariable(X, summed_P, kind=kind)
         else:
-            N = N_pmf(**match_args(locals(), N_pmf))
-        N1_rv = N1_pdf(**match_args(locals(), N1_pdf))
-    
-    return (N1_rv * cf_error).apply(cf_inv)
+            if (d_random is None) or (d_random == 1.0):
+                N = ds[ds > dmin].shape[0]
+            else:
+                N = N_pmf(**match_args(locals(), N_pmf))
+            N1_rv = N1_pdf(**match_args(locals(), N1_pdf))
+        
+        return (N1_rv * apply_factor(1, cf_error)).apply(cf_inv)
 
 
 def m16_age_p(N, A, dmin, pf, cf, t):

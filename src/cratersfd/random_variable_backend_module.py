@@ -355,7 +355,8 @@ def apply2rv(
     Y = f(X)
     is_valid = np.isfinite(Y) & ~np.isnan(Y)
     X, Y = X[is_valid], Y[is_valid]
-    roots = np.where(np.diff(np.sign(np.diff(Y))) != 0)[0] + 1
+    dYdX_sign = np.sign(np.diff(Y)[np.diff(Y) != 0])
+    roots = np.where(np.diff(dYdX_sign) != 0)[0] + 1
     if roots.shape[0] > 0:
         PY = PX * np.abs(np.gradient(X, Y))
         n = n_hide_near_roots
@@ -378,6 +379,8 @@ def apply2rv(
     else:
         C = rv.C()[is_valid]
         PY = np.gradient(C, Y)
+        Y = Y[~np.isnan(PY)]
+        PY = PY[~np.isnan(PY)]
         if Y[0] > Y[-1]:
             PY = -1 * PY
             Y, PY = np.flip(Y), np.flip(PY)
@@ -457,9 +460,12 @@ class MathRandomVariable(BaseRandomVariable):
 
     def pad_with_0s(self):
         X = np.append(self.X, self.X.max() + 1E-30)
-        X = np.insert(X, 0, self.X.min() - 1E-30)
         P = np.append(self.P, 0)
-        P = np.insert(P, 0, 0)
+        if self.X.min() < 1E-30 and self.X.min() > 0:
+            P[np.argmin(X)] = 0
+        else:
+            X = np.insert(X, 0, self.X.min() - 1E-30)
+            P = np.insert(P, 0, 0)
         return self.__class__(
             X, P, val=self.val, low=self.low, high=self.high, kind=self.kind
         )
