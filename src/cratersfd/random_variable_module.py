@@ -432,7 +432,7 @@ def lambda_error_lognormal(
 
 lambda_with_error_dict = {}
 def lambda_with_error(
-    X, N, random=1.5, systematic=1.1, additional=1.1
+    X, N, random=1.6, systematic=1.12, additional=1.1
 ):
     args = match_args(locals(), lambda_error_lognormal)
     key = tuple(args.values())
@@ -450,7 +450,7 @@ def lambda_with_error(
 
 def lambda_pdf_from_N_pmf(
     N_array, pmf, cum_prob_edge=1E-7, n_points=10000,
-    random=1.5, systematic=1.1, additional=1.1,
+    random=1.6, systematic=1.12, additional=1.1,
     p_cutoff=1E-10, apply_error=False
 ):
 

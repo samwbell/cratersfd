@@ -215,7 +215,7 @@ def age_pdf(
     ds, area, dmin, dmax=None, pf=npf_new, cf_inv=ncf_inv, 
     kind='median', d_random=1.05, 
     d_systematic=1.01, pf_error=1.0, npl=2000, cf_error=1.0, 
-    random=1.5, systematic=1.1, additional=1.1, sfd_rv=None, 
+    random=1.6, systematic=1.12, additional=1.1, sfd_rv=None, 
     d_min=None, bin_width_exponent=neukum_bwe, d_max=None, 
     growth_rate=1.3, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=10000,
