@@ -13,6 +13,7 @@ setup(
     package_data={"": ["LICENSE"]},
     install_requires=[
         "numpy>=1.26.4",
+        "matplotlib>=3.9.1",
         "scipy>=1.14.0",
         "pandas>=2.2.2",
         "geopandas>=1.0.1",
