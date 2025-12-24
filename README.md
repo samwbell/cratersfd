@@ -19,7 +19,7 @@ To see some of the functionality, start with three example notebooks:
 3) If you are using a virtual environment, enter it.  Installing cratersfd will update to the minimum versions of numpy, scipy, and pandas.  Otherwise, it should not affect the underlying packages.
 
 4) Install:
-`pip install -e .`
+`pip install -e .`  For a virtual environment, you will likely need to add the --no-user flag: `pip install -e . --no-user`
 
 5) If your environment does not yet have Jupyter installed, to open the Jupyter notebooks, install Jupyter by following the directions here: https://jupyter.org/install
 
