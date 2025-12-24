@@ -1,8 +1,4 @@
 from .target_properties_module import *
-import pycrs
-import geopandas as gpd
-from pyproj import Geod
-from shapely.geometry import Point, Polygon, MultiPolygon, LineString
 
 moon_geod = Geod(a=1737400, b=1738100)
 
@@ -25,32 +21,32 @@ def densify_polygon(polygon, resolution=0.01):
     ]
     return Polygon(exterior, interiors)
 
-def compute_geodetic_area(polygon):
-    global moon_geod
+def compute_geodetic_area(polygon, geod=moon_geod):
     total_area = 0
     lon, lat = polygon.exterior.xy
-    area, _ = moon_geod.polygon_area_perimeter(lon, lat)
+    area, _ = geod.polygon_area_perimeter(lon, lat)
     total_area += area
     for interior in polygon.interiors:
         lon, lat = zip(*interior.coords)
-        area, _ = moon_geod.polygon_area_perimeter(lon, lat)
+        area, _ = geod.polygon_area_perimeter(lon, lat)
         total_area -= area
     return abs(total_area)
 
-def lunar_area(geom, resolution=0.01):
+def calculate_area(geom, resolution=0.01, geod=moon_geod):
     if geom.is_empty:
         return 0.0
     if geom.geom_type == 'Polygon':
         poly = densify_polygon(geom, resolution)
-        return compute_geodetic_area(poly) / 1e6
+        return compute_geodetic_area(poly, geod=geod) / 1e6
     elif geom.geom_type == 'MultiPolygon':
         total = 0
         for part in geom.geoms:
             poly = densify_polygon(part, resolution)
-            total += compute_geodetic_area(poly)
+            total += compute_geodetic_area(poly, geod=geod)
         return total / 1e6
     else:
         raise TypeError('Input must be a Polygon or MultiPolygon.')
+lunar_area = calculate_area
 
 def width_at(polygon, y):
     xmin, xmax = polygon.bounds[0], polygon.bounds[2]

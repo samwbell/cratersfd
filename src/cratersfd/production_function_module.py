@@ -91,6 +91,16 @@ def linear_pf(N1=0.001, slope=-2):
     return out_f
 
 
+def linear_pf_R(alpha=2, D=1, R=0.1):
+    def out_f(d):
+        m = 2 - alpha
+        x = np.log10(d)
+        x1 = np.log10(D)
+        y1 = np.log10(R)
+        return 10**(m * (x - x1) + y1)
+    return out_f
+
+
 def loglog_linear_pf(N1=0.001, slope=-2):
     def out_f(logd):
         return slope * logd + np.log10(N1)

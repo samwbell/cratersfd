@@ -4,7 +4,7 @@ from .generic_plotting_module import *
 
 def fast_calc_R(
     ds, area, bin_width_exponent=neukum_bwe, reference_point=1.0, 
-    min_count=1, d_max=None, d_min=None,
+    min_count=0, d_max=None, d_min=None, bins=None,
     start_at_reference_point=False, growth_rate=1.0,
     fraction=1.0, pf=npf_new_loglog, do_correction=True,
     full_output=False, x_axis_position='log_center'
@@ -23,7 +23,7 @@ def fast_calc_R(
 
 def calc_R_pdfs(
     ds, area, bin_width_exponent=neukum_bwe, reference_point=1.0, 
-    min_count=1, d_max=None, d_min=None,
+    min_count=0, d_max=None, d_min=None, bins=None,
     start_at_reference_point=False, growth_rate=1.0,
     fraction=1.0, pf=npf_new_loglog, do_correction=True,
     x_axis_position='log_center', kind='log'
@@ -38,13 +38,13 @@ def calc_R_pdfs(
 
 def plot_R(
     ds, area, bin_width_exponent=neukum_bwe, reference_point=1.0, 
-    min_count=1, d_max=None, d_min=None,
+    min_count=0, d_max=None, d_min=None, bins=None,
     start_at_reference_point=False, growth_rate=1.0,
     fraction=1.0, pf=npf_new_loglog, 
     do_correction=True, ax='None', color='black', 
     alpha=1.0, plot_points=True, plot_error_bars=True,
     x_axis_position='log_center', ms=4, kind='log',
-    elinewidth=0.5, fontsize=14
+    elinewidth=0.5, fontsize=14, marker='s'
 ):
     args = match_args(locals(), calc_R_pdfs)
     bin_ds, pdf_list = calc_R_pdfs(**args)
@@ -58,7 +58,7 @@ def calc_sash_R(
     bin_width_exponent=neukum_bwe, d_max=None, 
     growth_rate=1.3, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=10000,
-    return_lines=False
+    return_lines=False, smallest_bin_min_fraction=0.3
 ):
     d, dif, difs = calc_sash(**match_args(locals(), calc_sash))[:3]
     if return_lines:
@@ -76,7 +76,8 @@ def plot_sash_R(
     min_count=1, n_iterations=5, n_alpha_points=10000,
     plot_error=False, fill_alpha=0.15, kernel=None, 
     reduction_factor=1.0, error_downsample=10, kind='log',
-    error_bin_width_exponent=per_decade(18), fontsize=14
+    error_bin_width_exponent=per_decade(18), fontsize=14,
+    smallest_bin_min_fraction=0.3
 ):
     t1 = time.time()
     args = match_args(locals(), calc_sash_R)
@@ -178,27 +179,5 @@ def plot_R_N(
     Ypf = pf(Xpf) / dif_integral * N / area * Xpf**3
     plt.plot(Xpf, Ypf, color, lw=lw)
 plot_npf_R_N = plot_R_N
-
-
-def plot_kde_R(
-    ds, area, d_min=None, d_max=1E4, n_points=10000,
-    color='black', lw=1.5
-): 
-    if d_min is None:
-        d_min = np.min(ds)
-    logD = np.linspace(np.log10(d_min), np.log10(d_max), n_points)
-    D = 10**logD
-    ds = np.flip(np.sort(ds))
-    i = 0
-    log_ds = np.log10(ds[:,np.newaxis])
-    kde_matrix = norm.pdf(logD, log_ds, np.log10(1.1)) / area
-    normalization = 1 / ds[:,np.newaxis] / math.log(10)
-    kde = np.sum(kde_matrix * normalization, axis=0) * D**3
-    plt.plot(D, kde, color=color, lw=lw)
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlim([d_min, 2 * np.max(ds)])
-    in_range = (D >= d_min) & (D <= 2 * np.max(ds))
-    plt.ylim([kde[in_range].min(), kde[in_range].max()])
 
 

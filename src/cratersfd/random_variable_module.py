@@ -193,7 +193,11 @@ def format_cc_plot(
     yrange = np.log10(ymax / ymin)
     plt.ylim([ymin / (10**(0.05 * yrange)), ymax * 10**(0.05 * yrange)])
 
-    plt.ylabel(ylabel_type + rf' Crater Density (km$^{{-2}}$)', size=fontsize)
+    ylabel_type = ylabel_type.strip()
+    ylabel = ylabel_type + ' Crater Density'
+    if ylabel_type != 'R':
+        ylabel += rf' (km$^{{-2}}$)'
+    plt.ylabel(ylabel, size=fontsize)
     plt.xlabel('Crater Diameter (km)', size=fontsize)
 
     plt.grid(which='major', linestyle=':', linewidth=0.5, color='black')

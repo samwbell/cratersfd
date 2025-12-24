@@ -537,3 +537,164 @@ def plot_sash_synth(
 
     return X, synth_mean_Ys
 
+
+def calc_kde(
+    ds, area, d_min=None, d_max=10**3.5, n_points=10000,
+    factor=1.1
+):
+    if d_min is None:
+        d_min = np.min(ds)
+    logD = np.linspace(np.log10(d_min), np.log10(d_max), n_points)
+    D = 10**logD
+    ds = np.flip(np.sort(ds))
+    i = 0
+    log_ds = np.log10(ds[:,np.newaxis])
+    kde_matrix = norm.pdf(logD, log_ds, np.log10(factor)) / area
+    normalization = 1 / ds[:,np.newaxis] / math.log(10)
+    kde = np.sum(kde_matrix * normalization, axis=0)
+    return D, kde
+
+
+def _use_version_1(synth_ds, ds, factor, n):
+    synth_ds = np.sort(synth_ds)
+    ds = np.sort(ds)
+    nearest_ds = ds[np.abs(synth_ds[:, None] - ds).argmin(axis=1)]
+    final_ds = np.ones(synth_ds.size, dtype=bool)
+    for i in range(synth_ds.size):
+        di, Di = synth_ds[i], nearest_ds[i]
+        if Di == nearest_ds.min():
+            final_ds[i] = True
+        elif Di == nearest_ds.max():
+            final_ds[i] = False
+        else:
+            left_gap = Di - nearest_ds[nearest_ds < Di].max()
+            right_gap = nearest_ds[nearest_ds > Di].min() - Di
+            left_buffer = n * (factor - 1 ) * (
+                di + nearest_ds[nearest_ds < Di].max()
+            )
+            right_buffer = n * (factor - 1 ) * (
+                di + nearest_ds[nearest_ds > Di].min()
+            )
+            if left_gap < left_buffer and right_gap < right_buffer:
+                final_ds[i] = True
+            else:
+                final_ds[i] = False
+    return final_ds
+
+
+kde_bounds_dict = {}
+def kde_bounds(
+    ds, area, d_min=None, d_max=10**3.5, n_points=10000,
+    factor=1.1, n_synths=1000, n=0.5,
+    confidence=np.array([p_1_sigma, 0.977249868])
+):
+    args = match_args(
+        locals(), kde_bounds, exclude=['ds', 'confidence']
+    )
+    args_key = tuple(
+        list(ds) + list(confidence) + list(args.values())
+    )
+    if args_key in kde_bounds_dict:
+        return kde_bounds_dict[args_key]
+    else:
+        if d_min is None:
+            d_min = np.min(ds)
+        ds = np.sort(ds)
+        D, kde = calc_kde(**match_args(locals(), calc_kde))
+        N = np.array(ds).size
+        synth_d_list = synth_fixed_N(
+            N=N, dmin=d_min, dmax=d_max, n_steps=n_synths,
+            differential_pf=fit_pf(D, kde)
+        )[0]
+        crossover_d = D[_use_version_1(D, ds, factor, n)].max()
+        
+        def _choose_ds(synth_ds, ds, crossover_d, N):
+            kde_ds = synth_ds[synth_ds >= crossover_d]
+            sampled_ds = np.random.choice(
+                ds[ds < crossover_d], N - kde_ds.size
+            )
+            return np.array(list(kde_ds) + list(sampled_ds))
+        
+        synth_kdes = [
+            calc_kde(
+                _choose_ds(synth_ds, ds, crossover_d, N), 
+                area, **match_kwargs(locals(), calc_kde)
+            )[1]
+            for synth_ds in synth_d_list
+        ]
+    
+        upper1, upper2 = np.percentile(
+            synth_kdes, 100 * confidence, axis=0
+        )
+        lower1, lower2 = np.percentile(
+            synth_kdes, 100 * (1 - confidence), axis=0
+        )
+
+        r_tuple = lower1, lower2, upper1, upper2
+        kde_bounds_dict[args_key] = r_tuple
+        return r_tuple
+
+
+def plot_kde(
+    ds, area, d_min=None, d_max=10**3.5, n_points=10000,
+    color='black', lw=1.5, factor=1.1, plot_error=False,
+    n_synths=1000, n=0.5, alpha=0.2, error_lw=0.5,
+    confidence=np.array([p_1_sigma, 0.977249868]),
+    xmin_factor=1.2, xmax_factor=1.5
+): 
+    if d_min is None:
+        d_min = np.min(ds)
+    D, kde = calc_kde(**match_args(locals(), calc_kde))
+    plt.plot(D, kde, color=color, lw=lw)
+    plt.xscale('log')
+    plt.yscale('log')
+    xmin = np.min(ds) / xmin_factor
+    xmax = np.max(ds) * xmax_factor
+    plt.xlim([xmin, xmax])
+    in_range = (D >= xmin) & (D <= xmax)
+    plt.ylim([kde[in_range].min(), kde[in_range].max()])
+    if plot_error:
+        lower1, lower2, upper1, upper2 = kde_bounds(
+            **match_args(locals(), kde_bounds)
+        )
+        plt.fill_between(
+            D, lower2, upper2, color=color, alpha=alpha, ec=None
+        )
+        plt.plot(D, lower1, ':', lw=error_lw, color=color)
+        plt.plot(D, upper1, ':', lw=error_lw, color=color)
+        plt.ylim([kde[in_range].min(), upper2[in_range].max()])
+
+
+def plot_kde_R(
+    ds, area, d_min=None, d_max=10**3.5, n_points=10000,
+    color='black', lw=1.5, factor=1.1, plot_error=False,
+    n_synths=1000, n=0.5, alpha=0.2, error_lw=0.5,
+    confidence=np.array([p_1_sigma, 0.977249868]),
+    xmin_factor=1.2, xmax_factor=1.5
+): 
+    if d_min is None:
+        d_min = np.min(ds)
+    D, kde = calc_kde(**match_args(locals(), calc_kde))
+    kde *= D**3
+    plt.plot(D, kde, color=color, lw=lw)
+    plt.xscale('log')
+    plt.yscale('log')
+    xmin = np.min(ds) / xmin_factor
+    xmax = np.max(ds) * xmax_factor
+    plt.xlim([xmin, xmax])
+    in_range = (D >= xmin) & (D <= xmax)
+    plt.ylim([kde[in_range].min(), kde[in_range].max()])
+    if plot_error:
+        lower1, lower2, upper1, upper2 = kde_bounds(
+            **match_args(locals(), kde_bounds)
+        )
+        lower1, lower2 = lower1 * D**3, lower2 * D**3
+        upper1, upper2 = upper1 * D**3, upper2 * D**3
+        plt.fill_between(
+            D, lower2, upper2, color=color, alpha=alpha, ec=None
+        )
+        plt.plot(D, lower1, ':', lw=error_lw, color=color)
+        plt.plot(D, upper1, ':', lw=error_lw, color=color)
+        plt.ylim([kde[in_range].min(), upper2[in_range].max()])
+
+

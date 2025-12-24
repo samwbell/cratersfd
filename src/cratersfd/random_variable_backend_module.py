@@ -79,7 +79,11 @@ class CoreRandomVariable:
         return v
     
     def sample(self, n_samples, n_points=10000):
-        X = np.linspace(self.X.min(), self.X.max(), n_points)
+        X = np.logspace(
+            np.log10(self.X.min()), 
+            np.log10(self.X.max()), 
+            n_points
+        )
         P = np.interp(X, self.X, self.P)
         P = P / P.sum()
         return np.random.choice(X, p=P, size=n_samples)

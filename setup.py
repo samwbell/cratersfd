@@ -15,6 +15,10 @@ setup(
         "numpy>=1.26.4",
         "scipy>=1.14.0",
         "pandas>=2.2.2",
+        "geopandas>=1.0.1",
+        "shapely>=2.1.0",
+        "pycrs>=1.0.2",
+        "pyproj>=3.7.1",
         "ash @ git+https://github.com/ajdittmann/ash.git@master#egg=ash"
     ],
     classifiers=[

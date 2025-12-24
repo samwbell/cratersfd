@@ -8,7 +8,7 @@ def differential_correction(w, m):
 
 def fast_calc_differential(
     ds, area, bin_width_exponent=neukum_bwe, reference_point=1.0, 
-    min_count=1, d_max=None, d_min=None,
+    min_count=0, d_max=None, d_min=None, bins=None,
     start_at_reference_point=False, growth_rate=1.0,
     fraction=1.0, pf=npf_new_loglog, do_correction=True,
     full_output=False, x_axis_position='linear_center'
@@ -57,7 +57,7 @@ fast_calc_dif = fast_calc_differential
 
 def calc_differential_pdfs(
     ds, area, bin_width_exponent=neukum_bwe, reference_point=1.0, 
-    min_count=1, d_max=None, d_min=None, growth_rate=1.0,
+    min_count=0, d_max=None, d_min=None, growth_rate=1.0, bins=None,
     fraction=1.0, start_at_reference_point=False, pf=npf_new_loglog,
     do_correction=True, x_axis_position='linear_center', kind='log'
 ):
@@ -72,10 +72,10 @@ calc_dif_pdfs = calc_differential_pdfs
 
 def plot_differential(
     ds, area, bin_width_exponent=neukum_bwe, reference_point=1.0, 
-    min_count=1, d_max=None, d_min=None,
+    min_count=0, d_max=None, d_min=None, bins=None,
     start_at_reference_point=False, growth_rate=1.0,
     fraction=1.0, pf=npf_new_loglog, 
-    do_correction=False, ax='None', color='black', 
+    do_correction=False, ax='None', color='black', marker='s',
     alpha=1.0, plot_points=True, plot_error_bars=True,
     x_axis_position='linear_center', ms=4, kind='log', fontsize=14
 ):
@@ -264,7 +264,7 @@ def calc_sash(
     bin_width_exponent=neukum_bwe, d_max=None, 
     growth_rate=1.2, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=10000,
-    return_alphas=False
+    return_alphas=False, smallest_bin_min_fraction=0.3
 ):
     args = match_args(locals(), calc_sash, exclude='ds')
     args_key = tuple(list(ds) + list(args.values()))
@@ -284,7 +284,8 @@ def calc_sash(
         bin_info_list = [
             bin_craters(
                 **match_args(locals(), bin_craters),
-                start_at_reference_point=True, reference_point=d_min
+                start_at_reference_point=True, reference_point=d_min,
+                final_crater_buffer=True
             )
             for fraction in fractions
         ]
@@ -362,7 +363,8 @@ def sash_pdf(
     bin_width_exponent=neukum_bwe, d_max=None, 
     growth_rate=1.2, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=10000,
-    return_alphas=False, kind='mean'
+    return_alphas=False, kind='mean',
+    smallest_bin_min_fraction=0.3
 ):
     args = match_args(locals(), calc_sash, exclude='ds')
     args_key = tuple(list(ds) + list(args.values()) + [kind])
@@ -385,7 +387,8 @@ def plot_sash(
     return_alphas=False, plot_error=False,
     fill_alpha=0.15, kernel=None, reduction_factor=1.0,
     error_bin_width_exponent=per_decade(18), fontsize=14,
-    error_downsample=10, kind='log', plotting_max_factor=1.3
+    error_downsample=10, kind='log', plotting_max_factor=1.3,
+    smallest_bin_min_fraction=0.3
 ):
 
     t1 = time.time()
@@ -535,28 +538,6 @@ def plot_differential_binned(
         point_ds, val, low, high, ylabel_type='Differential ',
         x_max_pad=0, fontsize=fontsize
     )
-
-
-def plot_kde(
-    ds, area, d_min=None, d_max=1E4, n_points=10000,
-    color='black', lw=1.5
-): 
-    if d_min is None:
-        d_min = np.min(ds)
-    logD = np.linspace(np.log10(d_min), np.log10(d_max), n_points)
-    D = 10**logD
-    ds = np.flip(np.sort(ds))
-    i = 0
-    log_ds = np.log10(ds[:,np.newaxis])
-    kde_matrix = norm.pdf(logD, log_ds, np.log10(1.1)) / area
-    normalization = 1 / ds[:,np.newaxis] / math.log(10)
-    kde = np.sum(kde_matrix * normalization, axis=0)
-    plt.plot(D, kde, color=color, lw=lw)
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlim([d_min, 2 * np.max(ds)])
-    in_range = (D >= d_min) & (D <= 2 * np.max(ds))
-    plt.ylim([kde[in_range].min(), kde[in_range].max()])
 
 
 def plot_sash_alpha(

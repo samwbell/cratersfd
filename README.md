@@ -26,9 +26,6 @@ To see some of the functionality, start with three example notebooks:
 6) If you want the large files for the calculations in the calc folder, download the contents of calc/figs and calc/saved from [the draft Zenodo record](https://zenodo.org/records/13917307?preview=1&token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImViNWVmYjM0LTdkZTctNDczMC1iYjY2LTlhNjYzODcxYzhkYiIsImRhdGEiOnt9LCJyYW5kb20iOiJhMWQ2YjgwNjMxM2RlOTMwOWEyZjA5ZjJlMzkzZDYwYyJ9.vr01Yxztc8haK-hcSkeJ1pzCK8ujAzZX3A_i8x2oU-mFYDygjUpsVbMWML4aepRRCxufn2sOnvf5QtxcVxUHQQ).
 
 ## Dependencies
-The cratersfd package primarily uses the standard numpy and scipy packages.  In a few cases, it uses pandas, mostly for reading and saving CSV files.  The one nonstandard package it uses is the ash package by Alexander Dittman (github.com/ajdittmann/ash), which implements the Average Shifted Histogram (ASH) method in Python.  
+The cratersfd package primarily uses the standard numpy and scipy packages.  In a few cases, it uses pandas, mostly for reading and saving CSV files.  For area calculations, it uses GeoPandas, PyProj, Shapely, and PyCRS.  The one nonstandard package it uses is the ash package by Alexander Dittman (github.com/ajdittmann/ash), which implements the Average Shifted Histogram (ASH) method in Python.  
 
 This method is used to produce smoothed histograms of observations that best approximate the underlying PDF as long as the distribution is roughly Gaussian.  We use it for handling synthetic modeling results.  While we are loath to rely on nonstandard packages, ASH dramatically reduces the N required to see the same quality of empirical PDF with synthetic modeling--often by more than an order of magnitude.
-
-The ASH algorithm can be used on crater count diameters for estimating the PDF of diameter from an observed set of crater diameters.  However, it will produce distortions because the distribution is not roughly Gaussian.  (It is instead roughly Pareto.)  This effect is similar to the distortions noted by Robbins et al. (2018) from the Kernel Density Estimation (KDE) method, which has mathematical similarities to ASH.
-
