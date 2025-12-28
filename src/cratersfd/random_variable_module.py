@@ -671,8 +671,8 @@ class DiscreteRandomVariable:
         rounding_n=2, label_shift_x=0, label_shift_y=0, unit=None, 
         label_text_size=10, force_label_side=None, xlim=None, 
         kind='same', label_color='same', alpha=0.3, pdf_label=None,
-        pdf_label_size=None, pdf_gap_shift=0, dn=None,
-        label_x=None, label_y=None, mf=None, **kwargs
+        pdf_label_size=None, pdf_gap_shift=0, dn=None, label_x=None, 
+        label_y=None, mf=None, before_label='', **kwargs
     ):
         
         axis_exists = any(plt.gcf().get_axes())
