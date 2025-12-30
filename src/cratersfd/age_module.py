@@ -171,7 +171,7 @@ def N_pmf_fast(
 def N1_pdf(
     N, area, dmin, pf=npf_new, kind='median',
     d_systematic=1.0, pf_error=1.0, npl=2000, lambda_rv=None,
-    random=1.5, systematic=1.1, additional=1.1, sfd_rv=None
+    random=1.5, systematic=1.1, additional=1.1, dmax=None
 ):
     if lambda_rv is None:
         lambda_rv = lambda_pdf(
@@ -183,16 +183,16 @@ def N1_pdf(
     if d_systematic != 1.0:
         if not isinstance(d_systematic, MathRandomVariable):
             d_systematic = apply_factor(1.0, d_systematic)
-        if sfd_rv is None:
-            raise ValueError(
-                'If d_systematic is not 1.0, you must input sfd_rv.'
-            )
-        sfd_rv2 = sfd_rv.update(sfd_rv)
-        pf_dmin = (dmin * d_systematic).update(sfd_rv2).apply(pf)
-    elif isinstance(dmin, MathRandomVariable):
-        pf_dmin = dmin.apply(pf)
+        if dmax is None:
+            pf_dmin = (dmin * d_systematic).apply(pf)
+        else:
+            def _f(d_sys):
+                return pf(dmin * d_sys) - pf(dmax * d_sys)
+            pf_dmin = d_systematic.apply(_f)
     else:
         pf_dmin = pf(dmin)
+        if dmax is not None:
+            pf_dmin -= pf(dmax)
     N1_shift = pf(1) / (pf_dmin * pf_error)
     if isinstance(dmin, MathRandomVariable):
         std_ratio = crater_density_rv.std() / lambda_rv.std() * area
