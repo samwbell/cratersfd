@@ -65,7 +65,9 @@ def bin_craters(
         bin_min = 0
         bin_max = np.array(bins).size - 1
     counts, bins = np.histogram(ds, bins)
+    left_edge = bins[0]
     bins = np.append(bins[:-1][counts >= min_count], bins[-1])
+    bins[0] = left_edge
     counts, bins = np.histogram(ds, bins)
     if final_crater_buffer:
         sorted_ds = np.flip(np.sort(ds))

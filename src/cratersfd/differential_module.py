@@ -131,7 +131,7 @@ def dif_line(
         
 
 def dif_line_from_ds(
-    ds, area, bins, n_points=10000, X=None, n_alpha_points=10000,
+    ds, area, bins, n_points=10000, X=None, n_alpha_points=1000,
     return_alphas=False
 ):
     if X is None:
@@ -263,7 +263,7 @@ def calc_sash(
     ds, area, d_min=None, 
     bin_width_exponent=neukum_bwe, d_max=None, 
     growth_rate=1.2, n_points=10000, n_shifts=200,
-    min_count=1, n_iterations=5, n_alpha_points=10000,
+    min_count=1, n_iterations=5, n_alpha_points=1000,
     return_alphas=False, smallest_bin_min_fraction=0.3
 ):
     args = match_args(locals(), calc_sash, exclude='ds')
@@ -362,7 +362,7 @@ def sash_pdf(
     ds, area, d_min=None, 
     bin_width_exponent=neukum_bwe, d_max=None, 
     growth_rate=1.2, n_points=10000, n_shifts=200,
-    min_count=1, n_iterations=5, n_alpha_points=10000,
+    min_count=1, n_iterations=5, n_alpha_points=1000,
     return_alphas=False, kind='mean',
     smallest_bin_min_fraction=0.3
 ):
@@ -383,12 +383,14 @@ def plot_sash(
     growth_rate=1.2, n_points=10000, n_shifts=200,
     color='mediumslateblue', plot_lines=False, lw=1.2,
     line_color='mediumslateblue', line_lw=0.2,
-    min_count=1, n_iterations=5, n_alpha_points=10000,
+    min_count=1, n_iterations=5, n_alpha_points=1000,
     return_alphas=False, plot_error=False,
     fill_alpha=0.15, kernel=None, reduction_factor=1.0,
-    error_bin_width_exponent=per_decade(18), fontsize=14,
+    error_bin_width_exponent=per_decade(18), fontsize=10,
     error_downsample=10, kind='log', plotting_max_factor=1.3,
-    smallest_bin_min_fraction=0.3
+    smallest_bin_min_fraction=0.3, show_craters=False,
+    crater_marker='|', crater_ms=10, crater_mew=0.5,
+    crater_alpha=1.0, crater_color='same', n_craters=None
 ):
 
     t1 = time.time()
@@ -407,6 +409,19 @@ def plot_sash(
         for Y in Ys:
             plt.plot(X, Y, color=line_color, lw=line_lw)
 
+    if show_craters:
+        if crater_color == 'same':
+            crater_color = color
+        if n_craters is None:
+            craters = ds
+        else:
+            capped_n_craters = min(len(list(ds)), n_craters)
+            craters = np.flip(np.sort(ds))[:capped_n_craters]
+        plt.plot(
+            craters, np.interp(craters, X, mean_Y), ls='', 
+            marker=crater_marker, ms=crater_ms, mew=crater_mew,
+            color=crater_color, alpha=crater_alpha
+        )
     plt.plot(X, mean_Y, color, lw=lw)
 
     Ycut = mean_Y[X <= plotting_max_factor * np.max(ds)]

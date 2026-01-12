@@ -198,6 +198,8 @@ npf_mars_coefficients = np.array([
 
 def npf_mars(D):
     return polynomial_pf(D, npf_mars_coefficients)
+npf_mars_dif = cumulative2differential_pf(npf_mars)
+npf_mars_R = differential2R_pf(npf_mars_dif)
 
 
 def relative_npf_error(d1, d2):
@@ -265,4 +267,46 @@ def synth_pf(d_km):
 def synth_cf_inv(n1):
     return n1/synth_pf(1)
     
+
+def plot_pf_fit_at(X, Y, pf, x, **kwargs):
+    scale_factor = np.interp(x, X, Y) / pf(x)
+    kwargs.setdefault('lw', 0.5)
+    kwargs.setdefault('color', 'orange')
+    plt.plot(X, scale_factor * pf(X), **kwargs)
+
+
+def plot_pf_isochrons(
+    pf, spacing=None, n_yaxis=20, **kwargs
+):
+    kwargs.setdefault('lw', 0.3)
+    kwargs.setdefault('color', 'orange')
+    xlim = plt.gca().get_xlim()
+    ylim = plt.gca().get_ylim()
+    x0, x1 = xlim[0], xlim[1]
+    y0, y1 = ylim[0], ylim[1]
+    if spacing is None:
+        spacing = (y1 / y0)**(1 / n_yaxis)
+    else:
+        n_yaxis = math.log(y1 / y0, spacing)
+    X = np.logspace(np.log10(x0), np.log10(x1), 10000)
+    n_rest_of_plot = math.log(pf(x0) / pf(x1), spacing)
+    n_isochrons = math.ceil(n_yaxis + n_rest_of_plot)
+    for n in range(n_isochrons):
+        y = y0 * spacing**n
+        plt.plot(X, pf(X) * y / pf(x0), **kwargs)
+    plt.xlim(xlim)
+    plt.ylim(ylim)
+
+
+def merge_pfs_at(pf1, pf2, d):
+    def merged_pf(D):
+        return np.piecewise(
+            D, 
+            [D < d, D >= d],
+            [
+                pf1(D[D < d]), 
+                pf2(D[D >= d]) * pf1(d) / pf2(d)
+            ]
+        )
+    return merged_pf
 

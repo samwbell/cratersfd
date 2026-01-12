@@ -1,6 +1,28 @@
 from .lunar_area_module import *
 
 
+def get_dmin_pdf(
+    peak, left_std=0.005, right_std=0.005,
+    dmin_min=None, dmin_max=None,
+    n_points_left=5000, n_points_right=5000
+):
+    if dmin_min is None:
+        dmin_min = max(1E-50, peak - 3 * left_std)
+    if dmin_max is None:
+        dmin_maxe = peak + 3 * right_std
+    X1 = np.linspace(dmin_min, peak, n_points_left)
+    X2 = np.linspace(peak, dmin_max, n_points_right)
+    P1 = norm.pdf(X1, peak, left_std)
+    P2 = norm.pdf(X2, peak, right_std)
+    P1, P2 = P1 / P1.max(), P2 / P2.max()
+    X = np.array(list(X1) + list(X2))
+    P = np.array(list(P1) + list(P2))
+    return RandomVariable(
+        X, P, kind='linear', val=peak,
+        low=dmin_min, high=dmin_max
+    )
+
+
 def split_by_N(dmin_rv, ds):
     ds_in_X = ds[(ds < dmin_rv.X.max()) & (ds > dmin_rv.X.min())]
     N_list = list(np.flip(np.where(np.isin(np.flip(np.sort(ds)), ds_in_X))[0]))
@@ -41,7 +63,7 @@ def N_pmf(
     ds, area, dmin, d_random=1.05, n_samples=3000,
     dmax=None, d_min=None, n_stds=5, sfd_rv=None,
     bin_width_exponent=neukum_bwe, d_max=None, 
-    growth_rate=1.3, n_points=10000, n_shifts=200,
+    growth_rate=1.2, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=10000,
     p_cutoff=1E-10
 ):
@@ -141,7 +163,7 @@ def N_pmf_fast(
     ds, area, dmin, d_random=1.05,
     dmax=None, d_min=None, n_stds=4, sfd_rv=None,
     bin_width_exponent=neukum_bwe, d_max=None,
-    growth_rate=1.3, p_cutoff=1E-10, n_points=10000
+    growth_rate=1.2, p_cutoff=1E-10, n_points=10000
 ):
     if d_max is None:
         d_max = 10 * float(np.max(ds))
@@ -203,11 +225,15 @@ def N1_pdf(
 
 
 def age_pdf_only_counting_error(
-    ds, area, dmin, N=None, cf_inv=ncf_inv
+    ds, area, dmin, dmax=None, N=None, cf_inv=ncf_inv, pf=npf_new
 ):
     if N is None:
-        N = ds[ds >= dmin].size
-    N1_rv = N1_pdf(N, area, dmin)
+        if dmax is None:
+            N = ds[ds >= dmin].size
+        else:
+            N = ds[(ds >= dmin) & (ds < dmax)].size
+    random, systematic, additional, d_systematic = 1.0, 1.0, 1.0, 1.0
+    N1_rv = N1_pdf(**match_args(locals(), N1_pdf))
     return N1_rv.apply(cf_inv)
 
 
@@ -262,7 +288,10 @@ def age_pdf(
             N1_rv = RandomVariable(X, summed_P, kind=kind)
         else:
             if (d_random is None) or (d_random == 1.0):
-                N = ds[ds > dmin].shape[0]
+                if dmax is None:
+                    N = ds[ds >= dmin].size
+                else:
+                    N = ds[(ds >= dmin) & (ds < dmax)].size
             else:
                 N = N_pmf(**match_args(locals(), N_pmf))
             N1_rv = N1_pdf(**match_args(locals(), N1_pdf))

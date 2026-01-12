@@ -351,7 +351,7 @@ class BaseRandomVariable(CoreRandomVariable):
 
     
 def apply2rv(
-    rv, f, kind=None, even_out=True, precision=1.0, 
+    rv, f, kind=None, even_out=False, precision=1.0, 
     n_hide_near_roots=0
 ):
     X = rv.X
@@ -592,7 +592,7 @@ class MathRandomVariable(BaseRandomVariable):
                 kind=_kind
             )
 
-    def apply(self, f, kind=None, even_out=True):
+    def apply(self, f, kind=None, even_out=False):
         return apply2rv(self, f, kind=kind, even_out=even_out)
 
     def ten2the(self, kind=None, even_out=False):

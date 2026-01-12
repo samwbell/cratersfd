@@ -447,9 +447,12 @@ def synth_sash(
     differential_pf=None, n_steps=100,
     bin_width_exponent=neukum_bwe, d_max=1E4, 
     growth_rate=1.3, n_points=10000, n_shifts=200,
-    min_count=1, n_iterations=5, n_alpha_points=10000
+    min_count=1, n_iterations=5, n_alpha_points=1000
 ):
 
+    if d_min is None:
+        d_min = safe_d_min(ds)
+    
     args = match_args(
         locals(), synth_sash, exclude=['ds', 'use_saved_data']
     )
@@ -466,7 +469,7 @@ def synth_sash(
             differential_pf = fit_pf(X, Y)
         
         synth_d_list = synth_fixed_N(
-            N=np.array(ds).size, dmin=safe_d_min(ds), dmax=d_max,
+            N=np.array(ds).size, dmin=d_min, dmax=d_max,
             **match_kwargs(locals(), synth_fixed_N)
         )
     
@@ -486,13 +489,22 @@ def synth_sash(
 
 def plot_sash_synth(
     ds, area, d_min=None, plot_type='differential',
-    differential_pf=None, n_steps=100,
+    differential_pf=None, R_pf=None, n_steps=100,
     bin_width_exponent=neukum_bwe, d_max=1E4, 
-    growth_rate=1.3, n_points=10000, n_shifts=200,
-    min_count=1, n_iterations=5, n_alpha_points=10000,
+    growth_rate=1.2, n_points=10000, n_shifts=200,
+    min_count=1, n_iterations=5, n_alpha_points=1000,
     color='mediumslateblue', fill_alpha=0.15, lw=1.5, 
-    ls=':', fontsize=14, X=None, synth_mean_Ys=None
+    ls=':', fontsize=10, X=None, synth_mean_Ys=None
 ):
+    if differential_pf is None:
+        if R_pf is None:
+            raise ValueError(
+                'You must specify the differential_pf '
+                'or R_pf keyword arguments.'
+            )
+        else:
+            differential_pf = R2differential_pf(R_pf)
+        
     if (X is None) or (synth_mean_Ys is None):
         X, synth_mean_Ys = synth_sash(
             **match_args(locals(), synth_sash)

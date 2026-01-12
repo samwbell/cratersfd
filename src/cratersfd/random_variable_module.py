@@ -161,7 +161,7 @@ def erase_box(ax):
 def format_cc_plot(
     d_array, full_density, full_low=None, full_high=None, 
     full_ds=None, ylabel_type='Cumulative ', kind='log',
-    x_max_pad=0.1, fontsize=14
+    x_max_pad=0.1, fontsize=10
 ):
     
     plt.xscale('log')
@@ -202,6 +202,12 @@ def format_cc_plot(
 
     plt.grid(which='major', linestyle=':', linewidth=0.5, color='black')
     plt.grid(which='minor', linestyle=':', linewidth=0.25, color='gray')
+
+    ax = plt.gca()
+    ax.xaxis.labelpad = -1
+    ax.yaxis.labelpad = 0
+    ax.tick_params(axis='x', which='major', pad=0.5)
+    ax.tick_params(axis='y', which='major', pad=1)
 
     
 class RandomVariable(MathRandomVariable):
@@ -308,7 +314,7 @@ class RandomVariable(MathRandomVariable):
     
 def factor_pdf(
     factor, n_stds=6, n_points=10000, kind='mean',
-    spacing='linear'
+    spacing='log'
 ):
     s = np.log(factor)
     scale = np.exp(-0.5 * s**2) 
@@ -331,7 +337,8 @@ def factor_pdf(
 
 
 def apply_factor(
-    n, factor, n_stds=6, n_points=None, kind='mean'
+    n, factor, n_stds=6, n_points=None, kind='mean',
+    spacing='log'
 ):
     if factor == 1.0:
         return n
@@ -755,8 +762,8 @@ def true_error_pdf_single(
 
         errors_exist = (
             random != 1.0 
-            and systematic != 1.0
-            and additional != 1.0
+            or systematic != 1.0
+            or additional != 1.0
         )
         if apply_error and errors_exist:
             return_rv *= apply_factor(1, lambda_error_lognormal(
