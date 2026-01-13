@@ -9,7 +9,7 @@ def get_dmin_pdf(
     if dmin_min is None:
         dmin_min = max(1E-50, peak - 3 * left_std)
     if dmin_max is None:
-        dmin_maxe = peak + 3 * right_std
+        dmin_max = peak + 3 * right_std
     X1 = np.linspace(dmin_min, peak, n_points_left)
     X2 = np.linspace(peak, dmin_max, n_points_right)
     P1 = norm.pdf(X1, peak, left_std)
