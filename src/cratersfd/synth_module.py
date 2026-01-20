@@ -128,7 +128,8 @@ def synth_fixed_N(
     pf=loglog_linear_pf(N1=0.001, slope=-2),
     loglog_cumulative_pf=None,
     cumulative_pf=None, differential_pf=None,
-    loglog_differential_pf=None, n_steps=100, area=10000
+    loglog_differential_pf=None, R_pf=None,
+    loglog_R_pf=None, n_steps=100, area=10000
 ):
     if loglog_cumulative_pf is not None:
         pf = loglog_cumulative_pf
@@ -144,6 +145,14 @@ def synth_fixed_N(
                 loglog2linear_pf(loglog_differential_pf)
             )
         )
+    elif R_pf is not None:
+        pf = linear2loglog_pf(R2cumulative_pf(R_pf))
+    elif loglog_R_pf is not None:
+        pf = linear2loglog_pf(
+            R2cumulative_pf(
+                loglog2linear_pf(loglog_R_pf)
+            )
+        )
     logD = np.flip(np.linspace(np.log10(dmin), np.log10(dmax), n_points))
     D = 10**logD
     Y = 10**pf(logD) - 10**pf(np.log10(dmax))
@@ -154,6 +163,32 @@ def synth_fixed_N(
     ]
     synth_age = N / (10**pf(np.log10(dmin)) * area)
     return synth_list, synth_age
+
+
+def synth_craters(
+    N=20, dmin=1, dmax=10**3.5, n_points=10000, 
+    pf=loglog_linear_pf(N1=0.001, slope=-2),
+    loglog_cumulative_pf=None,
+    cumulative_pf=None, differential_pf=None,
+    loglog_differential_pf=None, R_pf=None,
+    loglog_R_pf=None
+):
+    n_steps = 1
+    args = match_args(locals(), synth_fixed_N)
+    return synth_fixed_N(**args)[0][0]
+    
+
+def synth_datasets(
+    N=20, dmin=1, dmax=10**3.5, n_points=10000, 
+    pf=loglog_linear_pf(N1=0.001, slope=-2),
+    loglog_cumulative_pf=None,
+    cumulative_pf=None, differential_pf=None,
+    loglog_differential_pf=None, R_pf=None,
+    loglog_R_pf=None, n=100
+):
+    n_steps = n
+    args = match_args(locals(), synth_fixed_N)
+    return synth_fixed_N(**args)[0]
 
 
 def pick_a_side_fit(
@@ -490,7 +525,7 @@ def synth_sash(
 def plot_sash_synth(
     ds, area, d_min=None, plot_type='differential',
     differential_pf=None, R_pf=None, n_steps=100,
-    bin_width_exponent=neukum_bwe, d_max=1E4, 
+    bin_width_exponent=neukum_bwe, d_max=10**3.5, 
     growth_rate=1.2, n_points=10000, n_shifts=200,
     min_count=1, n_iterations=5, n_alpha_points=1000,
     color='mediumslateblue', fill_alpha=0.15, lw=1.5, 

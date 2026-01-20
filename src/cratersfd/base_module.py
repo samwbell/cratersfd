@@ -34,6 +34,13 @@ def poisson_binomial_pmf(ps):
     return pmf
 
 
+def num_if_size1(a):
+    if type(a) == np.ndarray and a.size == 1:
+        a = a[0]
+    return a
+num1 = num_if_size1
+
+
 def format_runtime(seconds, round_to=5):
     days = math.floor(seconds / (60 * 60 * 24))
     seconds_in_final_day = seconds - days * (60 * 60 * 24)

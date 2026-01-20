@@ -463,13 +463,14 @@ class MathRandomVariable(BaseRandomVariable):
             return self.__add__(other)
 
     def pad_with_0s(self):
-        X = np.append(self.X, self.X.max() + 1E-30)
+        order = math.ceil(math.log10(np.abs(self.X.max())))
+        small = 2 * 10**(-15 + order)
+        X = np.append(self.X, self.X.max() + small)
         P = np.append(self.P, 0)
-        if self.X.min() < 1E-30 and self.X.min() > 0:
-            P[np.argmin(X)] = 0
-        else:
-            X = np.insert(X, 0, self.X.min() - 1E-30)
-            P = np.insert(P, 0, 0)
+        order = math.ceil(math.log10(np.abs(self.X.min())))
+        small = 2 * 10**(-15 + order)
+        X = np.insert(X, 0, self.X.min() - small)
+        P = np.insert(P, 0, 0)
         return self.__class__(
             X, P, val=self.val, low=self.low, high=self.high, kind=self.kind
         )

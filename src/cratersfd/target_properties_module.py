@@ -51,7 +51,7 @@ def D_guess(mi, K1, μ, ν, Y0, ρt, g, vi, ρi, D_est=50):
     )
 
 
-def D(mi, K1, μ, ν, Y0, ρt, g, vi, ρi, D_est=50, n_it=5):
+def get_D(mi, K1, μ, ν, Y0, ρt, g, vi, ρi, D_est=50, n_it=5):
     D = D_est
     for i in range(n_it):
         D = D_guess(mi, K1, μ, ν, Y0, ρt, g, vi, ρi, D_est=D)
@@ -82,8 +82,8 @@ def adjust_npf(
     ej=ejecta_scaling_params, sr=solid_rock_scaling_params, 
     moon=moon_scaling_params, mi_array=10**np.linspace(0, 20, 10000)
 ):
-    ej_D = D(mi_array, *ej, *moon)
-    sr_D = D(mi_array, *sr, *moon)
+    ej_D = get_D(mi_array, *ej, *moon)
+    sr_D = get_D(mi_array, *sr, *moon)
     d = sr_D / 1000
     sr_d = d
     sr2ej = np.interp(d, sr_D / 1000, ej_D / sr_D)

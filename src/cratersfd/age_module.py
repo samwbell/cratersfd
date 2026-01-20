@@ -248,6 +248,7 @@ def age_pdf(
     n_N1_points=10000, n_dmin_samples=50,
     only_counting_error=False
 ):
+    ds = np.array(ds)
     if only_counting_error:
         return age_pdf_only_counting_error(
             **match_args(locals(), age_pdf_only_counting_error)
@@ -269,13 +270,25 @@ def age_pdf(
             dmins, dmin_weights = sampled_rv.X, sampled_rv.P
             N1_pdf_kwargs = match_kwargs(locals(), N1_pdf)
             N_pmf_kwargs = match_kwargs(locals(), N_pmf)
-            N_rvs = [
-                N_pmf(ds, area, _dmin, **N_pmf_kwargs)
-                for _dmin in dmins
-            ]
+            if d_random == 1.0:
+                if dmax is None:
+                    N_list = [
+                        ds[ds >= _dmin].size
+                        for _dmin in dmins
+                    ]
+                else:
+                    N_list = [
+                        ds[(ds >= dmin) & (ds < dmax)].size
+                        for _dmin in dmins
+                    ]
+            else:
+                N_list = [
+                    N_pmf(ds, area, _dmin, **N_pmf_kwargs)
+                    for _dmin in dmins
+                ]
             N1_rvs = [
-                N1_pdf(N_rv, area, _dmin, **N1_pdf_kwargs)
-                for N_rv, _dmin in zip(N_rvs, dmins)
+                N1_pdf(N, area, _dmin, **N1_pdf_kwargs)
+                for N, _dmin in zip(N_list, dmins)
             ]
             N1_min = np.min([N1_rv.X.min() for N1_rv in N1_rvs])
             N1_max = np.max([N1_rv.X.max() for N1_rv in N1_rvs])

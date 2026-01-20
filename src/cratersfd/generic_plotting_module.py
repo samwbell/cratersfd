@@ -26,6 +26,9 @@ def bin_craters(
 ):
     if d_min is not None:
         reference_point = d_min
+        ds = ds[ds >= d_min]
+    if d_max is not None:
+         ds = ds[ds < d_max]
     if bins is None:
         bwe = bin_width_exponent
         if start_at_reference_point:
