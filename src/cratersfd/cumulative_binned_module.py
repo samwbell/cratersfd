@@ -12,6 +12,7 @@ def fast_calc_cumulative_binned(
         reference_point = d_min
         start_at_reference_point = True
     
+    min_count = 0
     bin_counts, bin_array, bin_min, bin_max = bin_craters(
         **match_args(locals(), bin_craters)
     )

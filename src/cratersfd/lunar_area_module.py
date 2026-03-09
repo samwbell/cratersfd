@@ -2,21 +2,37 @@ from .target_properties_module import *
 
 moon_geod = Geod(a=1737400, b=1738100)
 
-def densify_linestring(line, resolution=0.01):
+def densify_linestring(
+    line, resolution=0.01, geod=moon_geod, geodetic=False
+):
     coords = np.array(line.coords)
     new_coords = [coords[0]]
-    for i in range(1, len(coords)):
-        start, end = coords[i - 1], coords[i]
-        dist = np.linalg.norm(end - start)
-        n_pts = max(2, int(dist / resolution))
-        interp = np.linspace(start, end, n_pts)
-        new_coords.extend(interp[1:].tolist())
+    if geodetic:
+        resolution *= geod.a * math.pi / 180.0
+        for i in range(1, len(coords)):
+            start, end = coords[i - 1], coords[i]
+            lon0, lat0 = coords[i - 1]
+            lon1, lat1 = coords[i]
+            _, _, dist = geod.inv(lon0, lat0, lon1, lat1)
+            n_pts = int(dist / resolution)
+            new_points = geod.npts(lon0, lat0, lon1, lat1, n_pts)
+            new_coords.extend(new_points)
+            new_coords.append((lon1, lat1))
+    else:
+        for i in range(1, len(coords)):
+            start, end = coords[i - 1], coords[i]
+            dist = np.linalg.norm(end - start)
+            n_pts = max(2, int(dist / resolution))
+            interp = np.linspace(start, end, n_pts)
+            new_coords.extend(interp[1:].tolist())
     return LineString(new_coords)
 
-def densify_polygon(polygon, resolution=0.01):
-    exterior = densify_linestring(polygon.exterior, resolution)
+def densify_polygon(polygon, resolution=0.01, geodetic=False):
+    exterior = densify_linestring(
+        polygon.exterior, resolution, geodetic=geodetic
+    )
     interiors = [
-        densify_linestring(ring, resolution) 
+        densify_linestring(ring, resolution, geodetic=geodetic) 
         for ring in polygon.interiors
     ]
     return Polygon(exterior, interiors)
@@ -32,16 +48,16 @@ def compute_geodetic_area(polygon, geod=moon_geod):
         total_area -= area
     return abs(total_area)
 
-def calculate_area(geom, resolution=0.01, geod=moon_geod):
+def calculate_area(geom, resolution=0.01, geod=moon_geod, geodetic=False):
     if geom.is_empty:
         return 0.0
     if geom.geom_type == 'Polygon':
-        poly = densify_polygon(geom, resolution)
+        poly = densify_polygon(geom, resolution, geodetic=geodetic)
         return compute_geodetic_area(poly, geod=geod) / 1e6
     elif geom.geom_type == 'MultiPolygon':
         total = 0
         for part in geom.geoms:
-            poly = densify_polygon(part, resolution)
+            poly = densify_polygon(part, resolution, geodetic=geodetic)
             total += compute_geodetic_area(poly, geod=geod)
         return total / 1e6
     else:
